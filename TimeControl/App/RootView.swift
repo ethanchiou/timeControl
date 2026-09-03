@@ -30,13 +30,46 @@ struct RootView: View {
             }
             #endif
         }
+        #if os(macOS)
+        .overlay {
+            if appState.isCommandPaletteShown {
+                CommandPaletteView(isPresented: $appState.isCommandPaletteShown)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: appState.isCommandPaletteShown)
+        #else
+        .sheet(isPresented: $appState.isCommandPaletteShown) {
+            CommandPaletteView(isPresented: $appState.isCommandPaletteShown)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        #endif
         .onAppear {
             modelContext.undoManager = undoManager
             rollOver()
+            Task { await refreshBackgroundServices(requestingAuthorization: true) }
         }
         .onChange(of: undoManager) { _, new in modelContext.undoManager = new }
-        .onChange(of: scenePhase) { _, phase in if phase == .active { rollOver() } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                rollOver()
+                Task { await refreshBackgroundServices(requestingAuthorization: false) }
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in rollOver() }
+        .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+            NotificationScheduler.shared.scheduleRefresh(using: modelContext)
+        }
+    }
+
+    /// Re-plans local notifications. Asks for permission once, on first launch, when reminders are enabled.
+    private func refreshBackgroundServices(requestingAuthorization: Bool) async {
+        let scheduler = NotificationScheduler.shared
+        await scheduler.refreshAuthorizationStatus()
+        if requestingAuthorization, NotificationSettings.isEnabled, scheduler.authorizationStatus == .notDetermined {
+            _ = await scheduler.requestAuthorization()
+        }
+        await scheduler.reschedule(using: modelContext)
     }
 
     /// Moves yesterday's unfinished todos onto today and marks them so the lists can flag them.
