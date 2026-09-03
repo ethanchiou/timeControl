@@ -51,7 +51,7 @@ struct MenuBarView: View {
 
     private var headerSection: some View {
         HStack(alignment: .center, spacing: 12) {
-            RingView(progress: dailyProgress, lineWidth: 7, label: .fraction)
+            RingView(progress: dailyProgress, lineWidth: 7, tint: RingPalette.color(for: dailyProgress), label: .fraction)
                 .frame(width: 56, height: 56)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Today")

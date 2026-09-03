@@ -51,7 +51,7 @@ struct TodoColumn: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             if let ring {
-                RingView(progress: ring, lineWidth: 7, label: .fraction)
+                RingView(progress: ring, lineWidth: 7, tint: RingPalette.color(for: ring), label: .fraction)
                     .frame(width: 64, height: 64)
             }
             VStack(alignment: .leading, spacing: 2) {

@@ -21,9 +21,13 @@ private struct RingTrackFill: View {
                 .stroke(tint.opacity(0.15), lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: progress.fraction)
-                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .stroke(style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .foregroundStyle(tint)
                 .rotationEffect(.degrees(-90))
                 .animation(.spring(duration: 0.5), value: progress.fraction)
+                // Keyed on the colour, so a progress-tinted ring slides to its new shade when a todo
+                // is ticked and sits perfectly still the rest of the time.
+                .animation(.easeInOut(duration: 0.45), value: tint)
         }
     }
 }

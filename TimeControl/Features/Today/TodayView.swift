@@ -227,13 +227,13 @@ struct TodayView: View {
 
     private var ringSection: some View {
         HStack(alignment: .center, spacing: 16) {
-            RingView(progress: dailyProgress, lineWidth: 10, tint: .accentColor)
+            RingView(progress: dailyProgress, lineWidth: 10, tint: RingPalette.color(for: dailyProgress))
                 .frame(width: 96, height: 96)
             VStack(alignment: .leading, spacing: 8) {
                 Text(dailyProgress.isEmpty ? "Nothing planned" : "\(dailyProgress.done) of \(dailyProgress.total) done")
                     .font(.headline)
                 HStack(spacing: 8) {
-                    RingView(progress: weeklyProgress, lineWidth: 6, tint: .accentColor, label: .percent)
+                    RingView(progress: weeklyProgress, lineWidth: 6, tint: RingPalette.color(for: weeklyProgress), label: .percent)
                         .frame(width: 56, height: 56)
                     Text("This week")
                         .font(.caption)
