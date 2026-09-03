@@ -1,10 +1,18 @@
+import SwiftData
 import SwiftUI
 
 /// Menu bar commands shared by every window. Keyboard shortcuts live here so views stay simple.
 struct AppCommands: Commands {
     let appState: AppState
+    let container: ModelContainer
 
     var body: some Commands {
+        #if DEBUG
+        CommandMenu("Developer") {
+            Button("Load Sample Data") { SampleData.load(into: container.mainContext) }
+            Button("Delete All Data") { try? SampleData.wipe(container.mainContext) }
+        }
+        #endif
         CommandGroup(after: .newItem) {
             Button("Quick Add…") { appState.isCommandPaletteShown = true }
                 .keyboardShortcut("k", modifiers: .command)

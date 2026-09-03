@@ -184,9 +184,15 @@ public enum QuickAddParser {
             break
         }
 
-        // 2. Weekday list + a time range is a course (when a term exists).
+        // 2. Weekday list + a time range is a course (when a term exists). A *lone* weekday on an
+        //    event-sounding title is not: "Dentist Thu 2-3pm" is an appointment, "CS201 Fri 10-11:30" a course.
         if hasRange, !ex.weekdays.isEmpty, context.hasCurrentTerm {
-            return .course(buildCourse(toks, ex))
+            let recurs = ex.weekdays.count > 1
+                || ex.startWeek != nil
+                || ex.intervalWeeks > 1
+                || ex.kindTag != nil
+                || inferKind(from: title(toks, keep: [.free])) == .other
+            if recurs { return .course(buildCourse(toks, ex)) }
         }
 
         // 3. A date plus a time, an event-ish title, or an explicit #kind tag.

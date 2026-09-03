@@ -303,11 +303,37 @@ private extension ParsedCommand {
         #expect(e?.endMinute == 630)
     }
 
-    @Test func aWeekdayPlusARangeIsACourseEvenWhenTheTitleSoundsLikeAnEvent() {
-        // Disambiguation rule 2 (weekday + range) is checked before rule 3 (date + time).
-        let c = p("Interview Tue 3-4pm")?.asCourse
-        #expect(c?.weekdays == [.tuesday])
-        #expect(c?.startMinute == 900 && c?.endMinute == 960)
+    @Test func aLoneWeekdayPlusARangeIsAnEventWhenTheTitleSoundsLikeOne() {
+        // Rule 2 needs more than one weekday, a weeks/interval token, a kind tag, or a neutral title.
+        let e = p("Interview Tue 3-4pm")?.asEvent
+        #expect(p("Interview Tue 3-4pm")?.asCourse == nil)
+        #expect(e?.kind == .interview)
+        #expect(e?.day == d(9, 15))
+        #expect(e?.startMinute == 900)
+        #expect(e?.endMinute == 960)
+        #expect(e?.title == "Interview")
+    }
+
+    @Test func aLoneWeekdayPlusARangeStaysACourseOnANeutralTitle() {
+        let c = p("CS201 Fri 10-11:30")?.asCourse
+        #expect(c?.weekdays == [.friday])
+        #expect(c?.startMinute == 600)
+        #expect(c?.endMinute == 690)
+        #expect(c?.title == "CS201")
+        // A second weekday, a weeks window, an interval token or a kind tag each restore the course reading.
+        #expect(p("Interview Tue Thu 3-4pm")?.type == .course)
+        #expect(p("Interview Tue 3-4pm weeks 1-14")?.type == .course)
+        #expect(p("Interview Tue 3-4pm biweekly")?.type == .course)
+        #expect(p("Interview Tue 3-4pm #course")?.type == .course)
+    }
+
+    @Test func aLoneWeekdayPlusARangeOnAnAppointmentTitleIsAnEvent() {
+        let e = p("Dentist Thu 2-3pm")?.asEvent
+        #expect(e?.kind == .appointment)
+        #expect(e?.day == d(9, 10))
+        #expect(e?.startMinute == 840)
+        #expect(e?.endMinute == 900)
+        #expect(e?.title == "Dentist")
     }
 
     // MARK: Todos

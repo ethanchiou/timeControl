@@ -21,7 +21,7 @@ struct TimeControlApp: App {
                 .environment(appState)
         }
         .modelContainer(container)
-        .commands { AppCommands(appState: appState) }
+        .commands { AppCommands(appState: appState, container: container) }
         #if os(macOS)
         .defaultSize(width: 1100, height: 720)
         #endif
