@@ -49,7 +49,8 @@ struct WeekView: View {
                         termName: term?.name,
                         weekNumber: weekNumber,
                         weekCount: term?.weekCount,
-                        hiddenCount: hiddenCount
+                        hiddenCount: hiddenCount,
+                        onNewEvent: newEvent
                     )
                     Divider()
                     pager
@@ -80,6 +81,13 @@ struct WeekView: View {
         ToolbarItem(placement: .topBarLeading) {
             Button { appState.isCommandPaletteShown = true } label: {
                 Label("Quick Add", systemImage: "command")
+            }
+        }
+        // Leading, beside Quick Add: a fourth trailing item pushes the week controls into the
+        // overflow menu, which costs a tap to reach Today and the routine filter.
+        ToolbarItem(placement: .topBarLeading) {
+            Button(action: newEvent) {
+                Label("New Event", systemImage: "calendar.badge.plus")
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
@@ -203,6 +211,10 @@ struct WeekView: View {
         }
     }
 
+    private func newEvent() {
+        present(.sheet(.newEvent(appState.selectedDay)))
+    }
+
     /// One page in the direction the chevrons move, so swipe, arrow key and button all agree.
     private func page(_ pages: Int) {
         #if os(iOS)
@@ -222,6 +234,8 @@ struct WeekView: View {
         } actions: {
             Button("Set Up a Term") { appState.section = .terms }
                 .buttonStyle(.borderedProminent)
+            // The header carries the New Event button, and the header is not on screen here.
+            Button("New Event…", action: newEvent)
         }
     }
 
@@ -241,6 +255,8 @@ struct WeekView: View {
             BlackoutEditorSheet(term: term, initialKinds: [kind], initialWeeks: week...week)
         case .editTodo(let todo):
             TodoEditorSheet(todo: todo)
+        case .newEvent(let day):
+            EventEditorSheet(event: nil, defaultDay: day)
         }
     }
 
@@ -311,6 +327,7 @@ struct WeekView: View {
         case editEvent(Event)
         case blackout(Term, Kind, Int)
         case editTodo(TodoItem)
+        case newEvent(DayKey)
 
         var id: String {
             switch self {
@@ -319,6 +336,7 @@ struct WeekView: View {
             case .editEvent(let event): "event-\(event.uuid.uuidString)"
             case .blackout(let term, let kind, let week): "blackout-\(term.uuid.uuidString)-\(kind.rawValue)-\(week)"
             case .editTodo(let todo): "todo-\(todo.uuid.uuidString)"
+            case .newEvent(let day): "new-event-\(day.rawValue)"
             }
         }
     }

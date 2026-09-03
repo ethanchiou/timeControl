@@ -12,6 +12,8 @@ struct WeekHeader: View {
     let weekCount: Int?
     /// Occurrences in this week hidden by a blackout.
     let hiddenCount: Int
+    /// macOS puts the New Event button in this row; iOS puts it in the navigation bar.
+    let onNewEvent: () -> Void
 
     var body: some View {
         #if os(macOS)
@@ -24,6 +26,12 @@ struct WeekHeader: View {
             Spacer(minLength: 8)
             ScalePicker()
             WeekControls(hiddenCount: hiddenCount)
+            Button(action: onNewEvent) {
+                Label("New Event", systemImage: "calendar.badge.plus")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .help("New event on the selected day")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
