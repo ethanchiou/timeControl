@@ -67,6 +67,10 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.ethanchiou.TimeControlTests
         CODE_SIGN_IDENTITY: "-"
+        "TEST_HOST[sdk=macosx*]": "$(BUILT_PRODUCTS_DIR)/TimeControl.app/Contents/MacOS/TimeControl"
+        "TEST_HOST[sdk=iphoneos*]": "$(BUILT_PRODUCTS_DIR)/TimeControl.app/TimeControl"
+        "TEST_HOST[sdk=iphonesimulator*]": "$(BUILT_PRODUCTS_DIR)/TimeControl.app/TimeControl"
+        BUNDLE_LOADER: "$(TEST_HOST)"
 schemes:
   TimeControl:
     build:
