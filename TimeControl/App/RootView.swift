@@ -6,6 +6,7 @@ struct RootView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
     @Environment(\.undoManager) private var undoManager
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         @Bindable var appState = appState
@@ -29,8 +30,21 @@ struct RootView: View {
             }
             #endif
         }
-        .onAppear { modelContext.undoManager = undoManager }
+        .onAppear {
+            modelContext.undoManager = undoManager
+            rollOver()
+        }
         .onChange(of: undoManager) { _, new in modelContext.undoManager = new }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { rollOver() } }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in rollOver() }
+    }
+
+    /// Moves yesterday's unfinished todos onto today and marks them so the lists can flag them.
+    private func rollOver() {
+        let moved = RolloverService.run(in: modelContext)
+        if !moved.isEmpty {
+            appState.rolledOverTodoIDs.formUnion(moved.map(\.uuid))
+        }
     }
 
     @ViewBuilder
