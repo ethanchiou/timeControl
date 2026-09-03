@@ -41,6 +41,8 @@ final class AppState {
     /// Show occurrences hidden by a blackout, greyed out.
     var showsHiddenOccurrences = false
     var isCommandPaletteShown = false
+    /// Todos moved to today by the last rollover run; views show a subtle marker on them.
+    var rolledOverTodoIDs: Set<UUID> = []
 
     func goToToday() {
         let today = DayKey.today()
