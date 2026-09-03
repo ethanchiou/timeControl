@@ -24,6 +24,10 @@ struct TimeControlApp: App {
            let section = AppSection(rawValue: CommandLine.arguments[i + 1]) {
             appState.section = section
         }
+        if let i = CommandLine.arguments.firstIndex(of: "--scale"), i + 1 < CommandLine.arguments.count,
+           let scale = CalendarScale(rawValue: CommandLine.arguments[i + 1]) {
+            appState.calendarScale = scale
+        }
         #endif
     }
 

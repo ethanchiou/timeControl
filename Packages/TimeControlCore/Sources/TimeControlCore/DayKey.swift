@@ -84,6 +84,49 @@ public struct DayKey: Hashable, Comparable, Codable, Sendable, Strideable, Custo
         return start...(start + 6)
     }
 
+    // MARK: Months
+
+    /// The first day of this day's month.
+    public var monthStart: DayKey {
+        let c = civil
+        return DayKey(year: c.year, month: c.month, day: 1)
+    }
+
+    /// Days in this day's month.
+    public var monthLength: Int {
+        let c = civil
+        let next = c.month == 12
+            ? DayKey(year: c.year + 1, month: 1, day: 1)
+            : DayKey(year: c.year, month: c.month + 1, day: 1)
+        return next - monthStart
+    }
+
+    /// Every day of this day's month, first to last.
+    public var monthDays: ClosedRange<DayKey> {
+        let start = monthStart
+        return start...(start + (monthLength - 1))
+    }
+
+    /// The whole Monday-started weeks covering this day's month — the span a month grid draws.
+    /// The leading and trailing cells spill into the neighbouring months, so the range is always a
+    /// multiple of seven days.
+    public var monthGrid: ClosedRange<DayKey> {
+        let days = monthDays
+        return days.lowerBound.weekStart...(days.upperBound.weekStart + 6)
+    }
+
+    /// This day moved by whole months, clamped into the target month: 2026-01-31 plus one month is
+    /// 2026-02-28, not 2026-03-03.
+    public func addingMonths(_ months: Int) -> DayKey {
+        let c = civil
+        let total = c.year * 12 + (c.month - 1) + months
+        // Floored division so months before year 0 land in the right year.
+        let year = total >= 0 ? total / 12 : (total - 11) / 12
+        let month = total - year * 12 + 1
+        let length = DayKey(year: year, month: month, day: 1).monthLength
+        return DayKey(year: year, month: month, day: min(c.day, length))
+    }
+
     // MARK: Strideable
 
     public func advanced(by n: Int) -> DayKey { DayKey(rawValue: rawValue + n) }

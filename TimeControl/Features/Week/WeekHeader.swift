@@ -5,6 +5,8 @@ import TimeControlCore
 /// on iOS those live in the navigation bar (see `WeekControls`) so the row stays on one line.
 struct WeekHeader: View {
     let days: ClosedRange<DayKey>
+    /// What the span means: a day, a week, or the weeks covering a month.
+    let scale: CalendarScale
     let termName: String?
     let weekNumber: Int?
     let weekCount: Int?
@@ -15,11 +17,12 @@ struct WeekHeader: View {
         #if os(macOS)
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(dateRange)
+                Text(title)
                     .font(.headline)
                 termLine
             }
             Spacer(minLength: 8)
+            ScalePicker()
             WeekControls(hiddenCount: hiddenCount)
         }
         .padding(.horizontal, 16)
@@ -27,7 +30,7 @@ struct WeekHeader: View {
         #else
         // One row: the range on the left, the term/week on the right. Both stay on a single line at 390pt.
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(dateRange)
+            Text(title)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
@@ -63,6 +66,19 @@ struct WeekHeader: View {
 
     // MARK: Date range
 
+    private var title: String {
+        switch scale {
+        case .day:
+            return days.lowerBound.startDate().formatted(.dateTime.weekday(.wide).month(.wide).day().year())
+        case .month:
+            // The span is whole weeks and spills either side, so name the month the grid is *of*,
+            // which is always the month of the day two weeks in.
+            return (days.lowerBound + 14).startDate().formatted(.dateTime.month(.wide).year())
+        case .week:
+            return dateRange
+        }
+    }
+
     /// "Sep 7 – 13, 2026", "Sep 28 – Oct 4, 2026" or "Dec 28, 2026 – Jan 3, 2027".
     private var dateRange: String {
         let first = days.lowerBound
@@ -82,6 +98,31 @@ struct WeekHeader: View {
     }
 }
 
+/// Day / Week / Month. In the macOS header row; on iOS it sits in the navigation bar menu.
+struct ScalePicker: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        @Bindable var appState = appState
+        Picker("Scale", selection: $appState.calendarScale) {
+            ForEach(CalendarScale.allCases) { scale in
+                Text(scale.title).tag(scale)
+            }
+        }
+        #if os(macOS)
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 190)
+        .help("Show a day, a week or a month")
+        #else
+        // Segments would crowd the navigation bar off a 390pt screen; a menu costs one tap instead.
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .accessibilityLabel("Calendar scale")
+        #endif
+    }
+}
+
 /// Previous / today / next / show-hidden. In the macOS header row, in the iOS navigation bar.
 struct WeekControls: View {
     /// Occurrences in the visible span hidden by a blackout.
@@ -91,8 +132,8 @@ struct WeekControls: View {
 
     @Environment(AppState.self) private var appState
 
-    /// Days moved by one chevron tap when `pagesByDay`.
-    private static let dayPage = 3
+    /// Days moved by one chevron tap, or one swipe, when `pagesByDay`.
+    static let dayPage = 3
 
     var body: some View {
         HStack(spacing: 6) {
@@ -101,12 +142,12 @@ struct WeekControls: View {
             } label: {
                 Image(systemName: "chevron.left")
             }
-            .help(pagesByDay ? "Previous days" : "Previous week")
-            .accessibilityLabel(pagesByDay ? "Previous days" : "Previous week")
+            .help("Previous \(unitName)")
+            .accessibilityLabel("Previous \(unitName)")
 
             #if os(macOS)
             Button("Today") { appState.goToToday() }
-                .help("This week")
+                .help("Jump to today")
             #else
             Button {
                 appState.goToToday()
@@ -121,8 +162,8 @@ struct WeekControls: View {
             } label: {
                 Image(systemName: "chevron.right")
             }
-            .help(pagesByDay ? "Next days" : "Next week")
-            .accessibilityLabel(pagesByDay ? "Next days" : "Next week")
+            .help("Next \(unitName)")
+            .accessibilityLabel("Next \(unitName)")
 
             hiddenToggle
         }
@@ -157,11 +198,17 @@ struct WeekControls: View {
     }
 
     private func shift(_ pages: Int) {
-        if pagesByDay {
+        if pagesByDay, appState.calendarScale == .week {
             appState.shiftDay(by: pages * Self.dayPage)
         } else {
-            appState.shiftWeek(by: pages)
+            appState.shiftCalendar(by: pages)
         }
+    }
+
+    /// What one chevron tap moves.
+    private var unitName: String {
+        if pagesByDay, appState.calendarScale == .week { return "days" }
+        return appState.calendarScale.title.lowercased()
     }
 
     private var hiddenToggleLabel: String {

@@ -20,14 +20,21 @@ struct AppCommands: Commands {
         CommandMenu("Go") {
             Button("Today") { appState.goToToday() }
                 .keyboardShortcut("t", modifiers: .command)
-            Button("Previous Week") { appState.shiftWeek(by: -1) }
+            Button("Previous \(appState.calendarScale.title)") { appState.shiftCalendar(by: -1) }
                 .keyboardShortcut(.leftArrow, modifiers: .command)
-            Button("Next Week") { appState.shiftWeek(by: 1) }
+            Button("Next \(appState.calendarScale.title)") { appState.shiftCalendar(by: 1) }
                 .keyboardShortcut(.rightArrow, modifiers: .command)
             Button("Previous Day") { appState.shiftDay(by: -1) }
                 .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
             Button("Next Day") { appState.shiftDay(by: 1) }
                 .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+            Divider()
+            Button("Day") { appState.showCalendar(.day) }
+                .keyboardShortcut("d", modifiers: [.command, .control])
+            Button("Week") { appState.showCalendar(.week) }
+                .keyboardShortcut("w", modifiers: [.command, .control])
+            Button("Month") { appState.showCalendar(.month) }
+                .keyboardShortcut("m", modifiers: [.command, .control])
             Divider()
             ForEach(Array(AppSection.allCases.enumerated()), id: \.element) { index, section in
                 Button(section.title) { appState.section = section }

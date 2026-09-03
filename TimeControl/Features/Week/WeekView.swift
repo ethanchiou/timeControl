@@ -18,6 +18,7 @@ struct WeekView: View {
     @Query private var allBlackouts: [Blackout]
     @Query private var allExceptions: [OccurrenceException]
     @Query private var allTerms: [Term]
+    @Query private var allTodos: [TodoItem]
 
     @State private var sheet: Sheet?
     @State private var confirmation: Confirmation?
@@ -25,38 +26,37 @@ struct WeekView: View {
     @FocusState private var isGridFocused: Bool
 
     var body: some View {
-        let all = snapshot.occurrences(in: days, includeSuppressed: true)
-        let hiddenCount = all.filter(\.isSuppressed).count
-        let shown = appState.showsHiddenOccurrences ? all : all.filter { !$0.isSuppressed }
+        let hiddenCount = snapshot.occurrences(in: days(), includeSuppressed: true).filter(\.isSuppressed).count
         return Group {
             #if os(iOS)
             // The iOS TabView provides no navigation stack, and the week's controls live in the bar.
-            NavigationStack { content(shown: shown, hiddenCount: hiddenCount) }
+            NavigationStack { content(hiddenCount: hiddenCount) }
             #else
-            content(shown: shown, hiddenCount: hiddenCount)
+            content(hiddenCount: hiddenCount)
             #endif
         }
     }
 
-    private func content(shown: [Occurrence], hiddenCount: Int) -> some View {
+    private func content(hiddenCount: Int) -> some View {
         Group {
-            if allSeries.isEmpty, allEvents.isEmpty {
+            if allSeries.isEmpty, allEvents.isEmpty, todos(in: days()).isEmpty {
                 emptyState
             } else {
                 VStack(spacing: 0) {
                     WeekHeader(
-                        days: days,
+                        days: days(),
+                        scale: appState.calendarScale,
                         termName: term?.name,
                         weekNumber: weekNumber,
                         weekCount: term?.weekCount,
                         hiddenCount: hiddenCount
                     )
                     Divider()
-                    grid(occurrences: shown)
+                    pager
                 }
             }
         }
-        .navigationTitle("Week")
+        .navigationTitle(appState.calendarScale.title)
         #if os(iOS)
         // Inline: the grid needs the vertical space, and the date range is already in the header row.
         .navigationBarTitleDisplayMode(.inline)
@@ -83,6 +83,9 @@ struct WeekView: View {
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
+            ScalePicker()
+        }
+        ToolbarItem(placement: .topBarTrailing) {
             WeekControls(hiddenCount: hiddenCount, pagesByDay: isCompact)
         }
     }
@@ -97,34 +100,63 @@ struct WeekView: View {
         ScheduleSnapshot(series: allSeries, events: allEvents, blackouts: allBlackouts, exceptions: allExceptions)
     }
 
-    /// The full week everywhere except compact iOS, which shows three days around the selected one so
-    /// the columns stay readable and the time gutter never scrolls out of view.
-    private var days: ClosedRange<DayKey> {
-        #if os(iOS)
-        if isCompact {
-            return (appState.selectedDay - 1)...(appState.selectedDay + 1)
+    /// The span `pageOffset` pages away from the one on screen, from the scale. Compact iOS narrows
+    /// the week to three days around the selected one so the columns stay readable and the time
+    /// gutter never scrolls out of view — and pages by that same three days.
+    private func days(pageOffset: Int = 0) -> ClosedRange<DayKey> {
+        switch appState.calendarScale {
+        case .day:
+            let day = appState.selectedDay + pageOffset
+            return day...day
+        case .week:
+            #if os(iOS)
+            if isCompact {
+                let day = appState.selectedDay + pageOffset * WeekControls.dayPage
+                return (day - 1)...(day + 1)
+            }
+            #endif
+            let start = appState.weekStart + 7 * pageOffset
+            return start...(start + 6)
+        case .month:
+            return appState.selectedDay.addingMonths(pageOffset).monthGrid
         }
-        #endif
-        return appState.weekStart...(appState.weekStart + 6)
     }
 
-    private var term: Term? {
-        allTerms.first { !$0.isArchived && ($0.contains(days.lowerBound) || $0.contains(days.upperBound)) }
+    /// Tasks land on the calendar by their due date; a task with no due date does not appear.
+    private func todos(in span: ClosedRange<DayKey>) -> [DayKey: [TodoItem]] {
+        let dated = allTodos.compactMap { todo -> (DayKey, TodoItem)? in
+            guard let due = todo.dueDay, span.contains(due) else { return nil }
+            return (due, todo)
+        }
+        return Dictionary(grouping: dated, by: \.0).mapValues { $0.map(\.1).sorted(by: TodoItem.listOrder) }
     }
+
+    private func term(in span: ClosedRange<DayKey>) -> Term? {
+        allTerms.first { !$0.isArchived && ($0.contains(span.lowerBound) || $0.contains(span.upperBound)) }
+    }
+
+    /// The term context for the page on screen; the sheets and the header read this one.
+    private var term: Term? { term(in: days()) }
 
     /// The term week this row of days falls in; the term may start mid-week.
     private var weekNumber: Int? {
         guard let term else { return nil }
-        return days.compactMap { term.weekNumber(of: $0) }.first
+        return days().compactMap { term.weekNumber(of: $0) }.first
     }
 
     // MARK: Pieces
 
+    /// Scroll or swipe across a day or a week, down a month. The keyboard handling sits out here so
+    /// the three pages do not fight over one focus binding.
     @ViewBuilder
-    private func grid(occurrences: [Occurrence]) -> some View {
-        let grid = WeekGrid(days: days, occurrences: occurrences, weeks: term?.weeks, perform: perform)
+    private var pager: some View {
+        let pager = CalendarPager(
+            axis: appState.calendarScale == .month ? .vertical : .horizontal,
+            shift: page,
+            page: calendar(pageOffset:)
+        )
         #if os(macOS)
-        grid
+        pager
             .focusable()
             .focusEffectDisabled()
             .focused($isGridFocused)
@@ -132,15 +164,55 @@ struct WeekView: View {
             .onKeyPress(keys: ["t", .leftArrow, .rightArrow], phases: .down) { press in
                 guard press.modifiers.isEmpty else { return .ignored }
                 switch press.key {
-                case .leftArrow: appState.shiftWeek(by: -1)
-                case .rightArrow: appState.shiftWeek(by: 1)
+                case .leftArrow: page(-1)
+                case .rightArrow: page(1)
                 default: appState.goToToday()
                 }
                 return .handled
             }
         #else
-        grid
+        pager
         #endif
+    }
+
+    /// One page of the calendar, `pageOffset` spans away from the one on screen.
+    @ViewBuilder
+    private func calendar(pageOffset: Int) -> some View {
+        let span = days(pageOffset: pageOffset)
+        let all = snapshot.occurrences(in: span, includeSuppressed: true)
+        let shown = appState.showsHiddenOccurrences ? all : all.filter { !$0.isSuppressed }
+        let weeks = term(in: span)?.weeks
+        if appState.calendarScale == .month {
+            MonthGrid(
+                days: span,
+                monthOf: appState.selectedDay.addingMonths(pageOffset),
+                occurrences: shown,
+                todos: todos(in: span),
+                weeks: weeks,
+                perform: perform,
+                onEditTodo: { present(.sheet(.editTodo($0))) }
+            )
+        } else {
+            WeekGrid(
+                days: span,
+                occurrences: shown,
+                todos: todos(in: span),
+                weeks: weeks,
+                perform: perform,
+                onEditTodo: { present(.sheet(.editTodo($0))) }
+            )
+        }
+    }
+
+    /// One page in the direction the chevrons move, so swipe, arrow key and button all agree.
+    private func page(_ pages: Int) {
+        #if os(iOS)
+        if isCompact, appState.calendarScale == .week {
+            appState.shiftDay(by: pages * WeekControls.dayPage)
+            return
+        }
+        #endif
+        appState.shiftCalendar(by: pages)
     }
 
     private var emptyState: some View {
@@ -168,6 +240,8 @@ struct WeekView: View {
             EventEditorSheet(event: event)
         case .blackout(let term, let kind, let week):
             BlackoutEditorSheet(term: term, initialKinds: [kind], initialWeeks: week...week)
+        case .editTodo(let todo):
+            TodoEditorSheet(todo: todo)
         }
     }
 
@@ -242,6 +316,7 @@ struct WeekView: View {
         case editSeries(Series)
         case editEvent(Event)
         case blackout(Term, Kind, Int)
+        case editTodo(TodoItem)
 
         var id: String {
             switch self {
@@ -249,6 +324,7 @@ struct WeekView: View {
             case .editSeries(let series): "series-\(series.uuid.uuidString)"
             case .editEvent(let event): "event-\(event.uuid.uuidString)"
             case .blackout(let term, let kind, let week): "blackout-\(term.uuid.uuidString)-\(kind.rawValue)-\(week)"
+            case .editTodo(let todo): "todo-\(todo.uuid.uuidString)"
             }
         }
     }

@@ -5,7 +5,10 @@ import TimeControlCore
 enum AppSection: String, CaseIterable, Identifiable, Hashable {
     case today, week, todos, projects, terms, settings
 
-    var id: String { rawValue }
+    /// The sidebar's `List(_:selection:)` tags each row with `Element.ID`, so this must be the
+    /// section itself for the selection binding to ever match. A `String` id compiles and silently
+    /// breaks every click.
+    var id: Self { self }
 
     var title: String {
         switch self {
@@ -30,6 +33,21 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
+/// How much of the calendar the Week section shows at once.
+enum CalendarScale: String, CaseIterable, Identifiable, Hashable {
+    case day, week, month
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .day: "Day"
+        case .week: "Week"
+        case .month: "Month"
+        }
+    }
+}
+
 /// Navigation and transient UI state shared across the window, the menu bar extra and the command palette.
 @Observable
 final class AppState {
@@ -38,6 +56,8 @@ final class AppState {
     var selectedDay: DayKey = .today()
     /// Monday of the week shown by Week.
     var weekStart: DayKey = DayKey.today().weekStart
+    /// Day, week or month in the Week section.
+    var calendarScale: CalendarScale = .week
     /// Show occurrences hidden by a blackout, greyed out.
     var showsHiddenOccurrences = false
     var isCommandPaletteShown = false
@@ -62,5 +82,24 @@ final class AppState {
 
     func shiftDay(by days: Int) {
         show(day: selectedDay + days)
+    }
+
+    func shiftMonth(by months: Int) {
+        show(day: selectedDay.addingMonths(months))
+    }
+
+    /// One page of whatever the calendar is currently showing.
+    func shiftCalendar(by pages: Int) {
+        switch calendarScale {
+        case .day: shiftDay(by: pages)
+        case .week: shiftWeek(by: pages)
+        case .month: shiftMonth(by: pages)
+        }
+    }
+
+    /// Open the calendar at a scale, from a menu command or the palette.
+    func showCalendar(_ scale: CalendarScale) {
+        calendarScale = scale
+        section = .week
     }
 }

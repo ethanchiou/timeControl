@@ -9,8 +9,11 @@ import TimeControlCore
 struct WeekGrid: View {
     let days: ClosedRange<DayKey>
     let occurrences: [Occurrence]
+    /// Tasks by due date. They have no time of day, so they ride in the all-day row.
+    let todos: [DayKey: [TodoItem]]
     let weeks: TermWeeks?
     let perform: @MainActor (WeekAction) -> Void
+    let onEditTodo: (TodoItem) -> Void
 
     @Environment(AppState.self) private var appState
     #if os(iOS)
@@ -45,7 +48,7 @@ struct WeekGrid: View {
         VStack(spacing: 0) {
             headerRow(columnWidth: columnWidth)
             Divider()
-            if !plan.allDay.isEmpty {
+            if !plan.allDay.isEmpty || !todos.isEmpty {
                 allDayRow(columnWidth: columnWidth, plan: plan)
                 Divider()
             }
@@ -131,6 +134,9 @@ struct WeekGrid: View {
                     ForEach(plan.allDay[day] ?? []) { occurrence in
                         OccurrenceBlock(occurrence: occurrence, height: 18, weeks: weeks, perform: perform)
                             .frame(height: 18)
+                    }
+                    ForEach(todos[day] ?? [], id: \.uuid) { todo in
+                        TodoChip(todo: todo, onEdit: onEditTodo)
                     }
                 }
                 .frame(width: columnWidth, alignment: .top)

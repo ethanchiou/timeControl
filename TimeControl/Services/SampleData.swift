@@ -53,20 +53,21 @@ enum SampleData {
         context.insert(jobs)
         context.insert(apartment)
 
-        func todo(_ title: String, priority: Int, day: DayKey? = nil, week: DayKey? = nil, project: Project? = nil, done: Bool = false) {
-            let t = TodoItem(title: title, priority: priority, day: day, week: week, project: project)
+        // `dueDay` is what puts a task on the calendar, so the fixture spreads a few across the month.
+        func todo(_ title: String, priority: Int, day: DayKey? = nil, week: DayKey? = nil, dueDay: DayKey? = nil, project: Project? = nil, done: Bool = false) {
+            let t = TodoItem(title: title, priority: priority, day: day, week: week, dueDay: dueDay, project: project)
             if done { t.setDone(true) }
             context.insert(t)
         }
-        todo("Read chapter 4 for CS201", priority: 2, day: today, done: true)
-        todo("Problem set 3", priority: 1, day: today)
-        todo("Email advisor about thesis topic", priority: 2, day: today, project: thesis)
-        todo("Prep interview questions", priority: 1, day: today + 1, project: jobs)
+        todo("Read chapter 4 for CS201", priority: 2, day: today, dueDay: today, done: true)
+        todo("Problem set 3", priority: 1, day: today, dueDay: today + 2)
+        todo("Email advisor about thesis topic", priority: 2, day: today, dueDay: today + 1, project: thesis)
+        todo("Prep interview questions", priority: 1, day: today + 1, dueDay: today + 1, project: jobs)
         todo("Laundry", priority: 4, day: today - 1)
-        todo("Outline literature review", priority: 2, week: today, project: thesis)
-        todo("Apply to 3 postings", priority: 2, week: today, project: jobs)
-        todo("Renew library books", priority: 3, week: today, done: true)
-        todo("Draft chapter 1", priority: 1, project: thesis)
+        todo("Outline literature review", priority: 2, week: today, dueDay: today + 6, project: thesis)
+        todo("Apply to 3 postings", priority: 2, week: today, dueDay: today + 9, project: jobs)
+        todo("Renew library books", priority: 3, week: today, dueDay: today - 2, done: true)
+        todo("Draft chapter 1", priority: 1, dueDay: today + 21, project: thesis)
         todo("Update résumé", priority: 3, project: jobs, done: true)
         todo("Return moving boxes", priority: 4, project: apartment, done: true)
     }
