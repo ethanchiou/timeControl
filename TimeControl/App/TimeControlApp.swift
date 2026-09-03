@@ -38,6 +38,13 @@ struct TimeControlApp: App {
         }
         .menuBarExtraStyle(.window)
         .modelContainer(container)
+
+        Settings {
+            SettingsView()
+                .environment(appState)
+                .frame(minWidth: 520, minHeight: 560)
+        }
+        .modelContainer(container)
         #endif
     }
 

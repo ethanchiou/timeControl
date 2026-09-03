@@ -8,6 +8,7 @@ enum WeekAction {
     case showDetails(Occurrence)
     case skip(Occurrence)
     case editSeries(Occurrence)
+    case editEvent(Occurrence)
     case hideKindThisWeek(Occurrence)
     case delete(Occurrence)
     case restore(Occurrence)
@@ -149,7 +150,11 @@ struct OccurrenceActions: View {
                 }
             }
         } else {
-            // TODO: "Edit Event…" once the Events feature lands.
+            Button {
+                perform(.editEvent(occurrence))
+            } label: {
+                Label("Edit Event…", systemImage: "pencil")
+            }
             Button(role: .destructive) {
                 perform(.delete(occurrence))
             } label: {

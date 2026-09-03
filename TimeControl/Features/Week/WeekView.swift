@@ -120,6 +120,8 @@ struct WeekView: View {
             if let term = series.term {
                 SeriesEditorSheet(term: term, series: series)
             }
+        case .editEvent(let event):
+            EventEditorSheet(event: event)
         case .blackout(let term, let kind, let week):
             BlackoutEditorSheet(term: term, initialKinds: [kind], initialWeeks: week...week)
         }
@@ -137,6 +139,9 @@ struct WeekView: View {
         case .editSeries(let occurrence):
             guard let id = occurrence.seriesID, let series = modelContext.series(uuid: id), series.term != nil else { return }
             present(.sheet(.editSeries(series)))
+        case .editEvent(let occurrence):
+            guard let id = occurrence.eventID, let event = modelContext.event(uuid: id) else { return }
+            present(.sheet(.editEvent(event)))
         case .hideKindThisWeek(let occurrence):
             guard let term, let week = term.weekNumber(of: occurrence.day) else { return }
             present(.sheet(.blackout(term, occurrence.kind, week)))
@@ -191,12 +196,14 @@ struct WeekView: View {
     enum Sheet: Identifiable {
         case details(Occurrence)
         case editSeries(Series)
+        case editEvent(Event)
         case blackout(Term, Kind, Int)
 
         var id: String {
             switch self {
             case .details(let occurrence): "details-\(occurrence.id)"
             case .editSeries(let series): "series-\(series.uuid.uuidString)"
+            case .editEvent(let event): "event-\(event.uuid.uuidString)"
             case .blackout(let term, let kind, let week): "blackout-\(term.uuid.uuidString)-\(kind.rawValue)-\(week)"
             }
         }
