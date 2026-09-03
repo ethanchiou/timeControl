@@ -25,6 +25,20 @@ struct TimeControlApp: App {
     }
 
     var body: some Scene {
+        mainWindow
+        #if os(macOS)
+        MenuBarExtra {
+            MenuBarView()
+                .environment(appState)
+        } label: {
+            MenuBarLabel()
+        }
+        .menuBarExtraStyle(.window)
+        .modelContainer(container)
+        #endif
+    }
+
+    private var mainWindow: some Scene {
         WindowGroup(id: "main") {
             RootView()
                 .environment(appState)
