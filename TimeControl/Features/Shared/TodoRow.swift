@@ -10,8 +10,15 @@ struct TodoRow: View {
 
     private var priority: Priority { Priority(clamping: todo.priority) }
 
+    /// The touch checkbox already carries its own padding, so the row tightens to compensate.
+    #if os(macOS)
+    private let rowSpacing: CGFloat = 10
+    #else
+    private let rowSpacing: CGFloat = 2
+    #endif
+
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: rowSpacing) {
             Button {
                 withAnimation(.snappy) {
                     todo.setDone(!todo.isDone)
@@ -20,8 +27,14 @@ struct TodoRow: View {
                 Image(systemName: todo.isDone ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22))
                     .foregroundStyle(todo.isDone ? Color.green : priority.color)
+                    // Touch needs 44pt around the glyph; the Mac keeps the tight row it was designed with.
+                    #if !os(macOS)
+                    .frame(width: 44, height: 44)
+                    .contentShape(.rect)
+                    #endif
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(todo.isDone ? "Mark not done" : "Mark done")
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(todo.title)

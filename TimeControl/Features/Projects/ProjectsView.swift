@@ -3,7 +3,11 @@ import SwiftUI
 import TimeControlCore
 
 struct ProjectsView: View {
+    @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     @Query(sort: \Project.sortOrder) private var projects: [Project]
 
     @State private var filter: ProjectStatus = .active
@@ -46,7 +50,7 @@ struct ProjectsView: View {
                     .frame(maxHeight: .infinity)
                 } else {
                     ScrollView {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 360), spacing: 16)], spacing: 16) {
+                        LazyVGrid(columns: gridColumns, spacing: 16) {
                             ForEach(filtered) { project in
                                 NavigationLink(value: project) {
                                     ProjectCard(project: project)
@@ -60,8 +64,20 @@ struct ProjectsView: View {
                 }
             }
             .navigationTitle("Projects")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.large)
+            #endif
             .navigationDestination(for: Project.self) { ProjectDetailView(project: $0) }
             .toolbar {
+                #if os(iOS)
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        appState.isCommandPaletteShown = true
+                    } label: {
+                        Label("Quick Add", systemImage: "command")
+                    }
+                }
+                #endif
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         showingNewProject = true
@@ -87,6 +103,16 @@ struct ProjectsView: View {
                 }
             }
         }
+    }
+
+    /// One full-width card per row on iPhone; a flowing grid everywhere there is room for two.
+    private var gridColumns: [GridItem] {
+        #if os(iOS)
+        if horizontalSizeClass == .compact {
+            return [GridItem(.flexible(), spacing: 16)]
+        }
+        #endif
+        return [GridItem(.adaptive(minimum: 260, maximum: 360), spacing: 16)]
     }
 
     private var deleteConfirmationTitle: String {

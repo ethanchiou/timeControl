@@ -8,6 +8,21 @@ struct RootView: View {
     @Environment(\.undoManager) private var undoManager
     @Environment(\.scenePhase) private var scenePhase
 
+    #if !os(macOS)
+    /// Settings is not a tab on iOS; it is a sheet reached from Today and Terms, or by anything that
+    /// sets `appState.section = .settings` (the `--section settings` flag, the command palette).
+    @State private var showsSettings = false
+    /// The tab to return to when the settings sheet closes.
+    @State private var lastTab: AppSection = .today
+
+    private var tabSelection: Binding<AppSection> {
+        Binding(
+            get: { appState.section == .settings ? lastTab : appState.section },
+            set: { appState.section = $0 }
+        )
+    }
+    #endif
+
     var body: some View {
         @Bindable var appState = appState
         Group {
@@ -21,13 +36,25 @@ struct RootView: View {
                 sectionView(appState.section)
             }
             #else
-            TabView(selection: $appState.section) {
-                ForEach(AppSection.allCases) { section in
-                    sectionView(section)
-                        .tabItem { Label(section.title, systemImage: section.symbolName) }
-                        .tag(section)
+            // Five tabs so none of them fold into "More"; Settings is a sheet instead.
+            TabView(selection: tabSelection) {
+                Tab(AppSection.today.title, systemImage: AppSection.today.symbolName, value: AppSection.today) {
+                    TodayView()
+                }
+                Tab(AppSection.week.title, systemImage: AppSection.week.symbolName, value: AppSection.week) {
+                    WeekView()
+                }
+                Tab(AppSection.todos.title, systemImage: AppSection.todos.symbolName, value: AppSection.todos) {
+                    TodosView()
+                }
+                Tab(AppSection.projects.title, systemImage: AppSection.projects.symbolName, value: AppSection.projects) {
+                    ProjectsView()
+                }
+                Tab(AppSection.terms.title, systemImage: AppSection.terms.symbolName, value: AppSection.terms) {
+                    TermsView()
                 }
             }
+            .tabViewStyle(.sidebarAdaptable)
             #endif
         }
         #if os(macOS)
@@ -42,6 +69,19 @@ struct RootView: View {
             CommandPaletteView(isPresented: $appState.isCommandPaletteShown)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showsSettings, onDismiss: { appState.section = lastTab }) {
+            SettingsView()
+        }
+        .onAppear {
+            if appState.section == .settings { showsSettings = true }
+        }
+        .onChange(of: appState.section) { _, section in
+            if section == .settings {
+                showsSettings = true
+            } else {
+                lastTab = section
+            }
         }
         #endif
         .onAppear {

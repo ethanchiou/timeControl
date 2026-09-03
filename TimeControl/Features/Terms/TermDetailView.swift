@@ -25,6 +25,9 @@ struct TermDetailView: View {
         .listStyle(.inset)
         #endif
         .navigationTitle(term.name)
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         #if os(macOS)
         .navigationSubtitle(dateRangeLabel)
         #endif

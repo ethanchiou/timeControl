@@ -97,6 +97,9 @@ struct SeriesEditorSheet: View {
             }
             .formStyle(.grouped)
             .navigationTitle(isEditing ? "Edit Course" : "New Course")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -112,6 +115,8 @@ struct SeriesEditorSheet: View {
         }
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 560)
+        #else
+        .presentationDetents([.large])
         #endif
     }
 
@@ -166,10 +171,17 @@ struct WeekdayChips: View {
                         .font(.callout.weight(on ? .semibold : .regular))
                         .frame(minWidth: 40)
                         .padding(.vertical, 6)
+                        // Touch needs 44pt; the Mac keeps the tighter chip it was designed with.
+                        #if !os(macOS)
+                        .frame(minHeight: 44)
+                        .contentShape(Capsule())
+                        #endif
                         .background(on ? Color.accentColor : Color.secondary.opacity(0.15), in: Capsule())
                         .foregroundStyle(on ? Color.white : Color.primary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(day.name)
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
     }

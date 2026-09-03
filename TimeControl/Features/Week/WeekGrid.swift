@@ -1,8 +1,11 @@
 import SwiftUI
 import TimeControlCore
 
-/// Seven day columns over a scrolling hour grid. All the maths lives in `WeekLayout`; this view only
-/// turns minutes into points. The occurrences are handed in already computed for the week.
+/// A day column per day in `days` over a scrolling hour grid. All the maths lives in `WeekLayout`; this
+/// view only turns minutes into points. The occurrences are handed in already computed for the span.
+///
+/// The caller narrows `days` (compact iOS shows three) so the columns fit the width; only when they
+/// cannot does the grid fall back to scrolling horizontally.
 struct WeekGrid: View {
     let days: ClosedRange<DayKey>
     let occurrences: [Occurrence]
@@ -25,7 +28,7 @@ struct WeekGrid: View {
         let plan = DayPlan(occurrences: occurrences)
         let hours = WeekLayout.hourRange(covering: plan.items)
         GeometryReader { geo in
-            let flexible = max(0, geo.size.width - gutter) / 7
+            let flexible = max(0, geo.size.width - gutter) / CGFloat(dayList.count)
             let columnWidth = max(minColumnWidth, flexible)
             if columnWidth > flexible {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -58,7 +61,7 @@ struct WeekGrid: View {
                 }
             }
         }
-        .frame(width: gutter + columnWidth * 7, alignment: .leading)
+        .frame(width: gutter + columnWidth * CGFloat(dayList.count), alignment: .leading)
     }
 
     private var minColumnWidth: CGFloat {

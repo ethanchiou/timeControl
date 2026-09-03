@@ -73,6 +73,9 @@ struct ProjectEditorSheet: View {
             }
             .formStyle(.grouped)
             .navigationTitle(isEditing ? "Edit Project" : "New Project")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -88,6 +91,8 @@ struct ProjectEditorSheet: View {
         }
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 520)
+        #else
+        .presentationDetents([.large])
         #endif
     }
 

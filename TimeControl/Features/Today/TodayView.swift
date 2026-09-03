@@ -124,6 +124,14 @@ struct TodayView: View {
             Button { appState.shiftDay(by: 1) } label: { Image(systemName: "chevron.right") }
         }
         #endif
+        #if os(iOS)
+        ToolbarItem(placement: .topBarLeading) {
+            Button { appState.section = .settings } label: { Label("Settings", systemImage: "gearshape") }
+        }
+        ToolbarItem(placement: .topBarLeading) {
+            Button { appState.isCommandPaletteShown = true } label: { Label("Quick Add", systemImage: "command") }
+        }
+        #endif
         ToolbarItem(placement: .primaryAction) {
             Button { isCreatingEvent = true } label: { Label("New Event", systemImage: "calendar.badge.plus") }
         }
@@ -170,18 +178,34 @@ struct TodayView: View {
     }
 
     private var compactLayout: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                todoPane(scrollsInternally: false)
-                DayTimeline(
-                    day: appState.selectedDay, occurrences: occurrences, term: term,
-                    onEditEvent: { editingEvent = $0 }, onEditSeries: { editingSeries = $0 },
-                    scrollsInternally: false
-                )
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    todoPane(scrollsInternally: false)
+                    DayTimeline(
+                        day: appState.selectedDay, occurrences: occurrences, term: term,
+                        onEditEvent: { editingEvent = $0 }, onEditSeries: { editingSeries = $0 },
+                        scrollsInternally: false
+                    )
+                }
+                .padding()
             }
-            .padding()
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: addFieldFocused) { _, focused in
+                // Keep the add field above the keyboard; wait a beat for the keyboard's inset to land.
+                guard focused else { return }
+                Task {
+                    try? await Task.sleep(for: .milliseconds(250))
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        proxy.scrollTo(Self.addFieldID, anchor: .bottom)
+                    }
+                }
+            }
         }
     }
+
+    /// Scroll anchor for the inline add field.
+    private static let addFieldID = "add-todo-field"
 
     // MARK: Todo pane
 
@@ -283,12 +307,21 @@ struct TodayView: View {
         TextField("Add a todo for this day", text: $newTodoTitle)
             .textFieldStyle(.roundedBorder)
             .focused($addFieldFocused)
+            .id(Self.addFieldID)
+            #if !os(macOS)
+            .submitLabel(.done)
+            #endif
             .onSubmit {
                 let trimmed = newTodoTitle.trimmingCharacters(in: .whitespaces)
                 guard !trimmed.isEmpty else { return }
                 modelContext.insert(TodoItem(title: trimmed, day: appState.selectedDay))
                 newTodoTitle = ""
+                // The Mac keeps the caret for a run of todos; iOS gives the screen back instead.
+                #if os(macOS)
                 addFieldFocused = true
+                #else
+                addFieldFocused = false
+                #endif
             }
     }
 }

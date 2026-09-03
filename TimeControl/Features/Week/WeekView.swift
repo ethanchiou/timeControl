@@ -9,6 +9,9 @@ import TimeControlCore
 struct WeekView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     @Query private var allSeries: [Series]
     @Query private var allEvents: [Event]
@@ -25,6 +28,17 @@ struct WeekView: View {
         let all = snapshot.occurrences(in: days, includeSuppressed: true)
         let hiddenCount = all.filter(\.isSuppressed).count
         let shown = appState.showsHiddenOccurrences ? all : all.filter { !$0.isSuppressed }
+        return Group {
+            #if os(iOS)
+            // The iOS TabView provides no navigation stack, and the week's controls live in the bar.
+            NavigationStack { content(shown: shown, hiddenCount: hiddenCount) }
+            #else
+            content(shown: shown, hiddenCount: hiddenCount)
+            #endif
+        }
+    }
+
+    private func content(shown: [Occurrence], hiddenCount: Int) -> some View {
         Group {
             if allSeries.isEmpty, allEvents.isEmpty {
                 emptyState
@@ -43,6 +57,11 @@ struct WeekView: View {
             }
         }
         .navigationTitle("Week")
+        #if os(iOS)
+        // Inline: the grid needs the vertical space, and the date range is already in the header row.
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbarContent(hiddenCount: hiddenCount) }
+        #endif
         .sheet(item: $sheet, onDismiss: applyPending) { sheetContent($0) }
         .confirmationDialog(
             confirmation?.title ?? "",
@@ -55,6 +74,22 @@ struct WeekView: View {
         }
     }
 
+    #if os(iOS)
+    @ToolbarContentBuilder
+    private func toolbarContent(hiddenCount: Int) -> some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button { appState.isCommandPaletteShown = true } label: {
+                Label("Quick Add", systemImage: "command")
+            }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            WeekControls(hiddenCount: hiddenCount, pagesByDay: isCompact)
+        }
+    }
+
+    private var isCompact: Bool { horizontalSizeClass == .compact }
+    #endif
+
     // MARK: Data
 
     /// Built once per body evaluation; blocks never query for themselves.
@@ -62,7 +97,16 @@ struct WeekView: View {
         ScheduleSnapshot(series: allSeries, events: allEvents, blackouts: allBlackouts, exceptions: allExceptions)
     }
 
-    private var days: ClosedRange<DayKey> { appState.weekStart...(appState.weekStart + 6) }
+    /// The full week everywhere except compact iOS, which shows three days around the selected one so
+    /// the columns stay readable and the time gutter never scrolls out of view.
+    private var days: ClosedRange<DayKey> {
+        #if os(iOS)
+        if isCompact {
+            return (appState.selectedDay - 1)...(appState.selectedDay + 1)
+        }
+        #endif
+        return appState.weekStart...(appState.weekStart + 6)
+    }
 
     private var term: Term? {
         allTerms.first { !$0.isArchived && ($0.contains(days.lowerBound) || $0.contains(days.upperBound)) }

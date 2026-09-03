@@ -3,6 +3,7 @@ import SwiftUI
 import TimeControlCore
 
 struct TermsView: View {
+    @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Term.startDayKey, order: .reverse) private var terms: [Term]
 
@@ -38,10 +39,22 @@ struct TermsView: View {
                 }
             }
             .navigationTitle("Terms")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.large)
+            #endif
             .navigationDestination(for: Term.self) { term in
                 TermDetailView(term: term)
             }
             .toolbar {
+                #if os(iOS)
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        appState.section = .settings
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
+                    }
+                }
+                #endif
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         showingNewTerm = true

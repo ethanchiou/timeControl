@@ -36,6 +36,9 @@ struct ProjectDetailView: View {
         .listStyle(.inset)
         #endif
         .navigationTitle(project.title)
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         #if os(macOS)
         .navigationSubtitle("\(project.progress.done) of \(project.progress.total) done")
         #endif

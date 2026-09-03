@@ -4,6 +4,10 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
+    #if os(iOS)
+    /// Settings is a sheet on iOS (it is not a tab), so it needs its own way out.
+    @Environment(\.dismiss) private var dismiss
+    #endif
 
     @State private var rolloverEnabled = RolloverService.isEnabled
     #if DEBUG
@@ -25,6 +29,14 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .navigationTitle("Settings")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            #endif
             #if DEBUG
             .onAppear { sampleDataLoaded = SampleData.isLoaded(in: modelContext) }
             #endif
@@ -39,7 +51,7 @@ struct SettingsView: View {
                     RolloverService.isEnabled = newValue
                 }
             Button {
-                appState.isCommandPaletteShown = true
+                showCommandPalette()
             } label: {
                 HStack {
                     Label("Quick Add…", systemImage: "command")
@@ -52,6 +64,19 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    /// iOS presents Settings as a sheet, and a second sheet cannot go up over it: close this one first.
+    private func showCommandPalette() {
+        #if os(iOS)
+        dismiss()
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            appState.isCommandPaletteShown = true
+        }
+        #else
+        appState.isCommandPaletteShown = true
+        #endif
     }
 
     #if DEBUG

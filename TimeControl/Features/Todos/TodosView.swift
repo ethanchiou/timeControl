@@ -74,7 +74,19 @@ struct TodosView: View {
                 }
             }
             .navigationTitle("Todos")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.large)
+            #endif
             .toolbar {
+                #if os(iOS)
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        appState.isCommandPaletteShown = true
+                    } label: {
+                        Label("Quick Add", systemImage: "command")
+                    }
+                }
+                #endif
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         showingNewTodo = true

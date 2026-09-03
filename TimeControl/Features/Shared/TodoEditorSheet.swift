@@ -106,6 +106,9 @@ struct TodoEditorSheet: View {
             }
             .formStyle(.grouped)
             .navigationTitle(isEditing ? "Edit Todo" : "New Todo")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -121,6 +124,8 @@ struct TodoEditorSheet: View {
         }
         #if os(macOS)
         .frame(minWidth: 440, minHeight: 480)
+        #else
+        .presentationDetents([.large])
         #endif
     }
 

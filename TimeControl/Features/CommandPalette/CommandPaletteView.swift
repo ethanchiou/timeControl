@@ -21,7 +21,14 @@ struct CommandPaletteView: View {
         case failure(String, offersTerms: Bool)
     }
 
-    private static let prompt = "Add a course, event or todo… (try: CS201 Mon/Wed 10-11:30 weeks 1-14)"
+    /// The Mac has room for the worked example; the phone shows the short form and leans on the hints below.
+    private static var prompt: String {
+        #if os(macOS)
+        "Add a course, event or todo… (try: CS201 Mon/Wed 10-11:30 weeks 1-14)"
+        #else
+        "Course, event or todo…"
+        #endif
+    }
     private static let examples = [
         "Interview Tue 3pm",
         "todo Finish lab report !1 tomorrow",
@@ -84,7 +91,11 @@ struct CommandPaletteView: View {
                 }
             }
         }
-        .onAppear { focused = true }
+        .task {
+            // A sheet's field will not take focus in the same runloop turn it is presented in.
+            try? await Task.sleep(for: .milliseconds(120))
+            focused = true
+        }
         .onDisappear { flashTask?.cancel() }
         #endif
     }

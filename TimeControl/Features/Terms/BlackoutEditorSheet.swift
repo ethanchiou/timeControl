@@ -88,6 +88,9 @@ struct BlackoutEditorSheet: View {
             }
             .formStyle(.grouped)
             .navigationTitle(isEditing ? "Edit Blackout" : "Clear Weeks")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -97,6 +100,8 @@ struct BlackoutEditorSheet: View {
         }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 520)
+        #else
+        .presentationDetents([.large])
         #endif
     }
 

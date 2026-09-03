@@ -96,6 +96,9 @@ struct EventEditorSheet: View {
             }
             .formStyle(.grouped)
             .navigationTitle(isEditing ? "Edit Event" : "New Event")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -115,6 +118,8 @@ struct EventEditorSheet: View {
         }
         #if os(macOS)
         .frame(minWidth: 460, minHeight: 560)
+        #else
+        .presentationDetents([.large])
         #endif
     }
 

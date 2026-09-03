@@ -49,6 +49,9 @@ struct TermEditorSheet: View {
             }
             .formStyle(.grouped)
             .navigationTitle(isEditing ? "Edit Term" : "New Term")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -58,6 +61,8 @@ struct TermEditorSheet: View {
         }
         #if os(macOS)
         .frame(minWidth: 420, minHeight: 320)
+        #else
+        .presentationDetents([.large])
         #endif
     }
 
