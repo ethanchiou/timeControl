@@ -25,7 +25,7 @@ struct TimeControlApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             RootView()
                 .environment(appState)
         }
