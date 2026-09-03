@@ -13,6 +13,7 @@ struct EventEditorSheet: View {
     @State private var title: String
     @State private var kind: Kind
     @State private var isAllDay: Bool
+    @State private var isRoutine: Bool
     @State private var start: Date
     @State private var end: Date
     @State private var location: String
@@ -37,6 +38,7 @@ struct EventEditorSheet: View {
         _title = State(initialValue: event?.title ?? "")
         _kind = State(initialValue: initialKind)
         _isAllDay = State(initialValue: event?.isAllDay ?? false)
+        _isRoutine = State(initialValue: event?.isRoutine ?? false)
         let defaultStart = WeekMath.instant(day: defaultDay, minute: 9 * 60)
         _start = State(initialValue: event?.startDate ?? defaultStart)
         _end = State(initialValue: event?.endDate ?? defaultStart.addingTimeInterval(3600))
@@ -66,6 +68,12 @@ struct EventEditorSheet: View {
                         }
                     }
                     Toggle("All-day", isOn: $isAllDay)
+                }
+
+                Section {
+                    Toggle("Routine", isOn: $isRoutine)
+                } footer: {
+                    Text("Routine items (gym, club, standing meetings) are hidden together with courses when the eye filter is on, so only one-time items show.")
                 }
 
                 Section {
@@ -145,10 +153,11 @@ struct EventEditorSheet: View {
             event.location = location
             event.notes = notes
             event.reminderOffsetsMinutes = reminders
+            event.isRoutine = isRoutine
         } else {
             let e = Event(
                 title: t, kind: kind, start: start, end: end, isAllDay: isAllDay,
-                location: location, notes: notes, reminderOffsetsMinutes: reminders
+                location: location, notes: notes, reminderOffsetsMinutes: reminders, isRoutine: isRoutine
             )
             modelContext.insert(e)
         }

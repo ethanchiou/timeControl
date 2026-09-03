@@ -3,7 +3,7 @@ import SwiftUI
 import TimeControlCore
 
 enum AppSection: String, CaseIterable, Identifiable, Hashable {
-    case today, week, todos, projects, terms, settings
+    case today, calendar, todos, projects, terms, settings
 
     /// The sidebar's `List(_:selection:)` tags each row with `Element.ID`, so this must be the
     /// section itself for the selection binding to ever match. A `String` id compiles and silently
@@ -13,7 +13,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
     var title: String {
         switch self {
         case .today: "Today"
-        case .week: "Week"
+        case .calendar: "Calendar"
         case .todos: "Todos"
         case .projects: "Projects"
         case .terms: "Terms"
@@ -24,12 +24,17 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
     var symbolName: String {
         switch self {
         case .today: "sun.max"
-        case .week: "calendar"
+        case .calendar: "calendar"
         case .todos: "checklist"
         case .projects: "square.grid.2x2"
         case .terms: "graduationcap"
         case .settings: "gearshape"
         }
+    }
+
+    /// Accepts the section's raw name and the pre-rename alias "week" (debug flag, ⌘K "go week").
+    static func named(_ raw: String) -> AppSection? {
+        raw == "week" ? .calendar : AppSection(rawValue: raw)
     }
 }
 
@@ -58,8 +63,8 @@ final class AppState {
     var weekStart: DayKey = DayKey.today().weekStart
     /// Day, week or month in the Week section.
     var calendarScale: CalendarScale = .week
-    /// Show occurrences hidden by a blackout, greyed out.
-    var showsHiddenOccurrences = false
+    /// The eye filter: hide routine items (course occurrences and events marked routine) so only one-time items show.
+    var hidesRoutine = false
     var isCommandPaletteShown = false
     /// Todos moved to today by the last rollover run; views show a subtle marker on them.
     var rolledOverTodoIDs: Set<UUID> = []
@@ -100,6 +105,6 @@ final class AppState {
     /// Open the calendar at a scale, from a menu command or the palette.
     func showCalendar(_ scale: CalendarScale) {
         calendarScale = scale
-        section = .week
+        section = .calendar
     }
 }

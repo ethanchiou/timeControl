@@ -30,7 +30,8 @@ xcodebuild -project TimeControl.xcodeproj -scheme TimeControl -destination 'plat
 
 ```
 --sample-data        load a fixture term, courses, blackout, events, projects and todos (idempotent)
---section week       open on a section: today | week | todos | projects | terms | settings
+--section calendar   open on a section: today | calendar | todos | projects | terms | settings ("week" still works)
+--hide-routine       start with the eye filter on (routine items hidden)
 --scale month        open the Week section at a scale: day | week | month
 --palette            open the ⌘K quick-add palette
 ```

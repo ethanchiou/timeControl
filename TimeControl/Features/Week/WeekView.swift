@@ -26,7 +26,7 @@ struct WeekView: View {
     @FocusState private var isGridFocused: Bool
 
     var body: some View {
-        let hiddenCount = snapshot.occurrences(in: days(), includeSuppressed: true).filter(\.isSuppressed).count
+        let hiddenCount = snapshot.occurrences(in: days()).filter(\.isRoutine).count
         return Group {
             #if os(iOS)
             // The iOS TabView provides no navigation stack, and the week's controls live in the bar.
@@ -56,7 +56,7 @@ struct WeekView: View {
                 }
             }
         }
-        .navigationTitle(appState.calendarScale.title)
+        .navigationTitle("Calendar")
         #if os(iOS)
         // Inline: the grid needs the vertical space, and the date range is already in the header row.
         .navigationBarTitleDisplayMode(.inline)
@@ -179,8 +179,7 @@ struct WeekView: View {
     @ViewBuilder
     private func calendar(pageOffset: Int) -> some View {
         let span = days(pageOffset: pageOffset)
-        let all = snapshot.occurrences(in: span, includeSuppressed: true)
-        let shown = appState.showsHiddenOccurrences ? all : all.filter { !$0.isSuppressed }
+        let shown = snapshot.occurrences(in: span, hidingRoutine: appState.hidesRoutine)
         let weeks = term(in: span)?.weeks
         if appState.calendarScale == .month {
             MonthGrid(
@@ -265,8 +264,6 @@ struct WeekView: View {
             present(.sheet(.blackout(term, occurrence.kind, week)))
         case .delete(let occurrence):
             present(.confirm(.delete(occurrence)))
-        case .restore(let occurrence):
-            present(.confirm(.restore(occurrence)))
         }
     }
 
@@ -274,9 +271,6 @@ struct WeekView: View {
         switch confirmation {
         case .delete(let occurrence):
             modelContext.deleteSource(of: occurrence)
-        case .restore(let occurrence):
-            guard let id = occurrence.suppressedBy, let blackout = modelContext.blackout(uuid: id) else { return }
-            modelContext.delete(blackout)
         }
         self.confirmation = nil
     }
@@ -331,12 +325,10 @@ struct WeekView: View {
 
     enum Confirmation: Identifiable {
         case delete(Occurrence)
-        case restore(Occurrence)
 
         var id: String {
             switch self {
             case .delete(let occurrence): "delete-\(occurrence.id)"
-            case .restore(let occurrence): "restore-\(occurrence.id)"
             }
         }
 
@@ -346,8 +338,6 @@ struct WeekView: View {
                 occurrence.seriesID != nil
                     ? "Delete “\(occurrence.title)” and all of its occurrences?"
                     : "Delete “\(occurrence.title)”?"
-            case .restore:
-                "Remove the blackout hiding this occurrence?"
             }
         }
 
@@ -355,8 +345,6 @@ struct WeekView: View {
             switch self {
             case .delete(let occurrence):
                 occurrence.seriesID != nil ? "Delete \(occurrence.kind.displayName)" : "Delete Event"
-            case .restore:
-                "Remove Blackout"
             }
         }
     }

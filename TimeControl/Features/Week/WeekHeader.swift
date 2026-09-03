@@ -123,9 +123,9 @@ struct ScalePicker: View {
     }
 }
 
-/// Previous / today / next / show-hidden. In the macOS header row, in the iOS navigation bar.
+/// Previous / today / next / routine filter. In the macOS header row, in the iOS navigation bar.
 struct WeekControls: View {
-    /// Occurrences in the visible span hidden by a blackout.
+    /// Routine occurrences in the visible span (what the eye filter hides).
     let hiddenCount: Int
     /// Compact iOS shows three days at a time, so its chevrons page by day rather than by week.
     var pagesByDay: Bool = false
@@ -165,35 +165,11 @@ struct WeekControls: View {
             .help("Next \(unitName)")
             .accessibilityLabel("Next \(unitName)")
 
-            hiddenToggle
+            RoutineFilterToggle(hiddenCount: hiddenCount)
         }
         #if os(macOS)
         .buttonStyle(.bordered)
         .controlSize(.small)
-        #endif
-    }
-
-    @ViewBuilder
-    private var hiddenToggle: some View {
-        #if os(macOS)
-        @Bindable var appState = appState
-        Toggle(isOn: $appState.showsHiddenOccurrences) {
-            if hiddenCount > 0 {
-                Label("\(hiddenCount) hidden", systemImage: eyeSymbol)
-            } else {
-                Image(systemName: eyeSymbol)
-            }
-        }
-        .toggleStyle(.button)
-        .help(hiddenToggleLabel)
-        .accessibilityLabel(hiddenToggleLabel)
-        #else
-        Button {
-            appState.showsHiddenOccurrences.toggle()
-        } label: {
-            Image(systemName: eyeSymbol)
-        }
-        .accessibilityLabel(hiddenToggleLabel)
         #endif
     }
 
@@ -209,13 +185,5 @@ struct WeekControls: View {
     private var unitName: String {
         if pagesByDay, appState.calendarScale == .week { return "days" }
         return appState.calendarScale.title.lowercased()
-    }
-
-    private var hiddenToggleLabel: String {
-        appState.showsHiddenOccurrences ? "Hide blacked-out occurrences" : "Show blacked-out occurrences"
-    }
-
-    private var eyeSymbol: String {
-        appState.showsHiddenOccurrences ? "eye" : "eye.slash"
     }
 }

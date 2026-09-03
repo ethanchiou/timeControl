@@ -46,7 +46,7 @@ import TimeControlCore
         #expect(doc.series.count == 5)
         #expect(doc.blackouts.count == 1)
         #expect(doc.exceptions.count == 1)
-        #expect(doc.events.count == 3)
+        #expect(doc.events.count == 4)
         #expect(doc.projects.count == 3)
         #expect(doc.todos.count == 11)
     }

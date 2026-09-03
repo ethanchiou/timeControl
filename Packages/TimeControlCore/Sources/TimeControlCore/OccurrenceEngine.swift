@@ -34,7 +34,8 @@ public enum OccurrenceEngine {
                         end: WeekMath.instant(day: day, minute: s.endMinute, calendar: calendar),
                         location: s.location,
                         colorHex: s.colorHex,
-                        suppressedBy: blackout?.id
+                        suppressedBy: blackout?.id,
+                        isRoutine: true
                     )
                 )
             }
@@ -52,7 +53,8 @@ public enum OccurrenceEngine {
                     start: e.start,
                     end: e.end,
                     isAllDay: e.isAllDay,
-                    location: e.location
+                    location: e.location,
+                    isRoutine: e.isRoutine
                 )
             )
         }

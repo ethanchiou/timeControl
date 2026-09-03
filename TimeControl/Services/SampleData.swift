@@ -36,11 +36,12 @@ enum SampleData {
         let examWeeks = term.weeks.days(inWeeks: 8...9)
         context.insert(Blackout(start: examWeeks.lowerBound, end: examWeeks.upperBound, kinds: [.course], reason: "Midterm exams", term: term))
 
-        func event(_ title: String, kind: Kind, dayOffset: Int, start: Int, minutes: Int, location: String = "") {
+        func event(_ title: String, kind: Kind, dayOffset: Int, start: Int, minutes: Int, location: String = "", routine: Bool = false) {
             let day = today + dayOffset
-            let e = Event(title: title, kind: kind, start: WeekMath.instant(day: day, minute: start), end: WeekMath.instant(day: day, minute: start + minutes), location: location)
+            let e = Event(title: title, kind: kind, start: WeekMath.instant(day: day, minute: start), end: WeekMath.instant(day: day, minute: start + minutes), location: location, isRoutine: routine)
             context.insert(e)
         }
+        event("Chess club", kind: .personal, dayOffset: 2, start: 18 * 60, minutes: 90, location: "Student Union", routine: true)
         event("Interview · Northwind Software", kind: .interview, dayOffset: 1, start: 15 * 60, minutes: 60, location: "Zoom")
         event("Dentist", kind: .appointment, dayOffset: 3, start: 8 * 60 + 30, minutes: 45, location: "Main St Dental")
         event("MATH240 Midterm", kind: .exam, dayOffset: 9, start: 9 * 60, minutes: 120, location: "Science 110")

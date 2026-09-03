@@ -127,15 +127,12 @@ struct DayTimeline: View {
                     .frame(width: 6, height: 6)
                 Text(occurrence.title)
                     .font(.subheadline.weight(.medium))
-                    .strikethrough(occurrence.isSuppressed)
                     .lineLimit(1)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Color(hex: occurrence.colorHex).opacity(0.12), in: Capsule())
         }
-        .opacity(occurrence.isSuppressed ? 0.45 : 1)
-        .help(occurrence.isSuppressed ? "Hidden by blackout" : "")
     }
 
     @ViewBuilder
@@ -158,13 +155,11 @@ struct DayTimeline: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(occurrence.title)
                         .font(.body.weight(.semibold))
-                        .strikethrough(occurrence.isSuppressed)
                         .lineLimit(2)
                     if !occurrence.location.isEmpty {
                         Text(occurrence.location)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .strikethrough(occurrence.isSuppressed)
                             .lineLimit(1)
                     }
                 }
@@ -176,8 +171,6 @@ struct DayTimeline: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
         }
-        .opacity(occurrence.isSuppressed ? 0.45 : 1)
-        .help(occurrence.isSuppressed ? "Hidden by blackout" : "")
     }
 
     private func nowLine(at date: Date) -> some View {
@@ -274,17 +267,6 @@ struct DayTimeline: View {
                 selectedOccurrence = nil
             }
         case .series(let seriesID, let occurrenceDay):
-            if occurrence.isSuppressed {
-                if let reason = suppressionReason(for: occurrence), !reason.isEmpty {
-                    Text(reason)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Button("Go to Term") {
-                    appState.section = .terms
-                    selectedOccurrence = nil
-                }
-            } else {
                 Button("Skip This Occurrence") {
                     modelContext.skip(seriesID: seriesID, on: occurrenceDay)
                     selectedOccurrence = nil
@@ -295,12 +277,6 @@ struct DayTimeline: View {
                     }
                     selectedOccurrence = nil
                 }
-            }
         }
-    }
-
-    private func suppressionReason(for occurrence: Occurrence) -> String? {
-        guard let blackoutID = occurrence.suppressedBy else { return nil }
-        return modelContext.blackout(uuid: blackoutID)?.reason
     }
 }

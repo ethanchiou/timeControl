@@ -63,7 +63,8 @@ enum BackupService {
                 isAllDay: event.isAllDay,
                 location: event.location,
                 notes: event.notes,
-                reminderOffsetsMinutes: event.reminderOffsetsMinutes
+                reminderOffsetsMinutes: event.reminderOffsetsMinutes,
+                isRoutine: event.isRoutine
             )
         }
         let projects = try context.fetch(FetchDescriptor<Project>()).map { project in
@@ -180,7 +181,8 @@ enum BackupService {
                 isAllDay: dto.isAllDay,
                 location: dto.location,
                 notes: dto.notes,
-                reminderOffsetsMinutes: dto.reminderOffsetsMinutes
+                reminderOffsetsMinutes: dto.reminderOffsetsMinutes,
+                isRoutine: dto.isRoutine
             )
             event.uuid = dto.id
             context.insert(event)
@@ -333,6 +335,7 @@ enum BackupService {
                 event.location = dto.location
                 event.notes = dto.notes
                 event.reminderOffsetsMinutes = dto.reminderOffsetsMinutes
+                event.isRoutine = dto.isRoutine
                 updated += 1
             } else {
                 let event = Event(
@@ -343,7 +346,8 @@ enum BackupService {
                     isAllDay: dto.isAllDay,
                     location: dto.location,
                     notes: dto.notes,
-                    reminderOffsetsMinutes: dto.reminderOffsetsMinutes
+                    reminderOffsetsMinutes: dto.reminderOffsetsMinutes,
+                    isRoutine: dto.isRoutine
                 )
                 event.uuid = dto.id
                 context.insert(event)

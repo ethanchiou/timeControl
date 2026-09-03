@@ -88,6 +88,8 @@ public struct EventSpec: Hashable, Sendable, Identifiable {
     public var isAllDay: Bool
     public var location: String
     public var reminderOffsetsMinutes: [Int]
+    /// A recurring-ish thing you added by hand (gym, club). Hidden together with courses by the routine filter.
+    public var isRoutine: Bool
 
     public init(
         id: UUID = UUID(),
@@ -97,7 +99,8 @@ public struct EventSpec: Hashable, Sendable, Identifiable {
         end: Date,
         isAllDay: Bool = false,
         location: String = "",
-        reminderOffsetsMinutes: [Int] = []
+        reminderOffsetsMinutes: [Int] = [],
+        isRoutine: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -107,6 +110,7 @@ public struct EventSpec: Hashable, Sendable, Identifiable {
         self.isAllDay = isAllDay
         self.location = location
         self.reminderOffsetsMinutes = reminderOffsetsMinutes
+        self.isRoutine = isRoutine
     }
 }
 
@@ -190,10 +194,12 @@ public struct Occurrence: Hashable, Sendable, Identifiable {
     public var isAllDay: Bool
     public var location: String
     public var colorHex: String
-    /// The blackout hiding this occurrence, if any. The view decides whether to show it greyed or drop it.
+    /// The blackout hiding this occurrence, if any. Views never show suppressed occurrences.
     public var suppressedBy: UUID?
+    /// True for every series occurrence and for events marked routine; the eye filter hides these.
+    public var isRoutine: Bool
 
-    public init(source: Source, title: String, kind: Kind, day: DayKey, start: Date, end: Date, isAllDay: Bool = false, location: String = "", colorHex: String? = nil, suppressedBy: UUID? = nil) {
+    public init(source: Source, title: String, kind: Kind, day: DayKey, start: Date, end: Date, isAllDay: Bool = false, location: String = "", colorHex: String? = nil, suppressedBy: UUID? = nil, isRoutine: Bool = false) {
         self.source = source
         self.title = title
         self.kind = kind
@@ -204,6 +210,7 @@ public struct Occurrence: Hashable, Sendable, Identifiable {
         self.location = location
         self.colorHex = colorHex ?? kind.colorHex
         self.suppressedBy = suppressedBy
+        self.isRoutine = isRoutine
     }
 
     /// Stable key, shared with notification identifiers and the EventKit mirror.

@@ -28,13 +28,15 @@ struct ScheduleSnapshot {
         )
     }
 
-    func occurrences(in days: ClosedRange<DayKey>, includeSuppressed: Bool = false) -> [Occurrence] {
+    /// Blacked-out occurrences are dropped unless `includeSuppressed`. `hidingRoutine` also drops
+    /// series occurrences and routine events, leaving only one-time items (the eye filter).
+    func occurrences(in days: ClosedRange<DayKey>, includeSuppressed: Bool = false, hidingRoutine: Bool = false) -> [Occurrence] {
         let all = OccurrenceEngine.occurrences(in: days, series: series, events: events, blackouts: blackouts, exceptions: exceptions)
-        return includeSuppressed ? all : all.filter { !$0.isSuppressed }
+        return all.filter { (includeSuppressed || !$0.isSuppressed) && !(hidingRoutine && $0.isRoutine) }
     }
 
-    func occurrences(on day: DayKey, includeSuppressed: Bool = false) -> [Occurrence] {
-        occurrences(in: day...day, includeSuppressed: includeSuppressed)
+    func occurrences(on day: DayKey, includeSuppressed: Bool = false, hidingRoutine: Bool = false) -> [Occurrence] {
+        occurrences(in: day...day, includeSuppressed: includeSuppressed, hidingRoutine: hidingRoutine)
     }
 
     func next(after now: Date = Date()) -> Occurrence? {

@@ -58,7 +58,7 @@ import TimeControlCore
         #expect(series.startWeek == 1)
         #expect(series.endWeek == term.weekCount)
         #expect(term.weekCount == 15)
-        #expect(result.section == .week)
+        #expect(result.section == .calendar)
         #expect(result.message.hasPrefix("Added CS201 · Mon/Wed "))
         #expect(result.message.hasSuffix(" · weeks 1–15"))
         // The term contains `today`, so the week view lands on this week.
@@ -169,7 +169,7 @@ import TimeControlCore
         #expect(blackout.kinds == [.course])
         #expect(blackout.reason == "Fall break")
         #expect(blackout.term?.name == "Fall 2026")
-        #expect(result.section == .week)
+        #expect(result.section == .calendar)
         #expect(result.message == "Cleared courses · weeks 8–9")
         #expect(appState.weekStart == d(10, 26))
     }
@@ -196,7 +196,7 @@ import TimeControlCore
         #expect(appState.weekStart == DayKey.today().weekStart)
 
         let week = try executor.execute(.navigate(.week(3)))
-        #expect(week.section == .week)
+        #expect(week.section == .calendar)
         #expect(appState.weekStart == d(9, 21))
 
         #expect(try executor.execute(.navigate(.section("projects"))).section == .projects)

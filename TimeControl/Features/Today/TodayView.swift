@@ -36,7 +36,7 @@ struct TodayView: View {
     }
 
     private var occurrences: [Occurrence] {
-        snapshot.occurrences(on: appState.selectedDay, includeSuppressed: appState.showsHiddenOccurrences)
+        snapshot.occurrences(on: appState.selectedDay, hidingRoutine: appState.hidesRoutine)
     }
 
     private var dayTodos: [TodoItem] {
@@ -132,6 +132,9 @@ struct TodayView: View {
             Button { appState.isCommandPaletteShown = true } label: { Label("Quick Add", systemImage: "command") }
         }
         #endif
+        ToolbarItem(placement: .primaryAction) {
+            RoutineFilterToggle()
+        }
         ToolbarItem(placement: .primaryAction) {
             Button { isCreatingEvent = true } label: { Label("New Event", systemImage: "calendar.badge.plus") }
         }

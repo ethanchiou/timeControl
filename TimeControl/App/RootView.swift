@@ -41,7 +41,7 @@ struct RootView: View {
                 Tab(AppSection.today.title, systemImage: AppSection.today.symbolName, value: AppSection.today) {
                     TodayView()
                 }
-                Tab(AppSection.week.title, systemImage: AppSection.week.symbolName, value: AppSection.week) {
+                Tab(AppSection.calendar.title, systemImage: AppSection.calendar.symbolName, value: AppSection.calendar) {
                     WeekView()
                 }
                 Tab(AppSection.todos.title, systemImage: AppSection.todos.symbolName, value: AppSection.todos) {
@@ -135,7 +135,7 @@ struct RootView: View {
     private func sectionView(_ section: AppSection) -> some View {
         switch section {
         case .today: TodayView()
-        case .week: WeekView()
+        case .calendar: WeekView()
         case .todos: TodosView()
         case .projects: ProjectsView()
         case .terms: TermsView()

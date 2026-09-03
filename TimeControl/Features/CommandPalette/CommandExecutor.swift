@@ -111,7 +111,7 @@ struct CommandExecutor {
             ))
 
         case .navigate(.section(let name)):
-            guard let section = AppSection(rawValue: name) else { return .failure(.invalid("No section named “\(name)”")) }
+            guard let section = AppSection.named(name) else { return .failure(.invalid("No section named “\(name)”")) }
             return .success(PreviewInfo(
                 symbol: section.symbolName,
                 title: "Go to \(section.title)",
@@ -148,7 +148,7 @@ struct CommandExecutor {
             appState.weekStart = term.contains(today) ? today.weekStart : term.weeks.weekStart(ofWeek: weeks.start)
             return ExecutionResult(
                 message: "Added \(series.title) · \(schedule(draft)) · \(weeksLabel(weeks))",
-                section: .week
+                section: .calendar
             )
 
         case .event(let draft):
@@ -199,7 +199,7 @@ struct CommandExecutor {
             appState.weekStart = term.weeks.weekStart(ofWeek: weekRange(draft).lowerBound)
             return ExecutionResult(
                 message: "Cleared \(kindsLabel(draft.kinds)) · \(weeksLabel(weekRange(draft)))",
-                section: .week
+                section: .calendar
             )
 
         case .navigate(.today):
@@ -209,10 +209,10 @@ struct CommandExecutor {
         case .navigate(.week(let n)):
             guard let term = currentTerm() else { throw ExecutionError.noCurrentTerm }
             appState.weekStart = term.weeks.weekStart(ofWeek: n)
-            return ExecutionResult(message: "Week \(n)", section: .week)
+            return ExecutionResult(message: "Week \(n)", section: .calendar)
 
         case .navigate(.section(let name)):
-            guard let section = AppSection(rawValue: name) else { throw ExecutionError.invalid("No section named “\(name)”") }
+            guard let section = AppSection.named(name) else { throw ExecutionError.invalid("No section named “\(name)”") }
             return ExecutionResult(message: section.title, section: section)
         }
     }

@@ -15,9 +15,11 @@ extension SchemaV1 {
         var location: String = ""
         var notes: String = ""
         var reminderOffsetsMinutes: [Int] = []
+        /// Hidden together with courses by the routine filter (gym, club meeting you added by hand).
+        var isRoutine: Bool = false
         var createdAt: Date = Date()
 
-        init(title: String, kind: Kind, start: Date, end: Date, isAllDay: Bool = false, location: String = "", notes: String = "", reminderOffsetsMinutes: [Int]? = nil) {
+        init(title: String, kind: Kind, start: Date, end: Date, isAllDay: Bool = false, location: String = "", notes: String = "", reminderOffsetsMinutes: [Int]? = nil, isRoutine: Bool = false) {
             self.title = title
             self.kindRaw = kind.rawValue
             self.startDate = start
@@ -26,6 +28,7 @@ extension SchemaV1 {
             self.location = location
             self.notes = notes
             self.reminderOffsetsMinutes = reminderOffsetsMinutes ?? kind.defaultReminderMinutes.map { [$0] } ?? []
+            self.isRoutine = isRoutine
         }
     }
 }
@@ -39,6 +42,6 @@ extension Event {
     var day: DayKey { DayKey(startDate) }
 
     var spec: EventSpec {
-        EventSpec(id: uuid, title: title, kind: kind, start: startDate, end: endDate, isAllDay: isAllDay, location: location, reminderOffsetsMinutes: reminderOffsetsMinutes)
+        EventSpec(id: uuid, title: title, kind: kind, start: startDate, end: endDate, isAllDay: isAllDay, location: location, reminderOffsetsMinutes: reminderOffsetsMinutes, isRoutine: isRoutine)
     }
 }

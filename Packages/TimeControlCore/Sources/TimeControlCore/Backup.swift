@@ -175,6 +175,7 @@ public struct EventDTO: Codable, Hashable, Sendable {
     public var location: String
     public var notes: String
     public var reminderOffsetsMinutes: [Int]
+    public var isRoutine: Bool
 
     public init(
         id: UUID = UUID(),
@@ -185,7 +186,8 @@ public struct EventDTO: Codable, Hashable, Sendable {
         isAllDay: Bool = false,
         location: String = "",
         notes: String = "",
-        reminderOffsetsMinutes: [Int] = []
+        reminderOffsetsMinutes: [Int] = [],
+        isRoutine: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -196,10 +198,11 @@ public struct EventDTO: Codable, Hashable, Sendable {
         self.location = location
         self.notes = notes
         self.reminderOffsetsMinutes = reminderOffsetsMinutes
+        self.isRoutine = isRoutine
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, kindRaw, startDate, endDate, isAllDay, location, notes, reminderOffsetsMinutes
+        case id, title, kindRaw, startDate, endDate, isAllDay, location, notes, reminderOffsetsMinutes, isRoutine
     }
 
     public init(from decoder: Decoder) throws {
@@ -213,6 +216,7 @@ public struct EventDTO: Codable, Hashable, Sendable {
         location = try c.decodeIfPresent(String.self, forKey: .location) ?? ""
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         reminderOffsetsMinutes = try c.decodeIfPresent([Int].self, forKey: .reminderOffsetsMinutes) ?? []
+        isRoutine = try c.decodeIfPresent(Bool.self, forKey: .isRoutine) ?? false
     }
 }
 

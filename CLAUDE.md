@@ -12,7 +12,7 @@ concurrency, app target defaults to MainActor isolation. Pure logic lives in `Pa
 - Core tests: `cd Packages/TimeControlCore && swift test`. App tests: `xcodebuild … -destination 'platform=macOS' test`.
 - Concurrent builds: give each parallel worker its own `-derivedDataPath` to avoid build-database locks.
 - Simulator smoke test: build with `-destination 'platform=iOS Simulator,id=<udid>'`, `xcrun simctl install`,
-  `xcrun simctl launch <udid> com.ethanchiou.TimeControl --sample-data --section week`, `xcrun simctl io <udid> screenshot`.
+  `xcrun simctl launch <udid> com.ethanchiou.TimeControl --sample-data --section calendar`, `xcrun simctl io <udid> screenshot`.
   `screencapture` on the Mac needs Screen Recording permission and is not available to the agent.
 
 ## Conventions

@@ -822,7 +822,7 @@ private func explicitPrefix(_ toks: [Tok]) -> (CommandType, Int)? {
 }
 
 private let sectionNames: [String: String] = [
-    "today": "today", "week": "week", "weeks": "week", "todo": "todos", "todos": "todos",
+    "today": "today", "week": "week", "weeks": "week", "calendar": "calendar", "todo": "todos", "todos": "todos",
     "project": "projects", "projects": "projects", "term": "terms", "terms": "terms",
     "setting": "settings", "settings": "settings", "preferences": "settings", "prefs": "settings"
 ]

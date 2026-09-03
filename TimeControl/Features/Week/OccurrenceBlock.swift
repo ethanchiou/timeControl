@@ -11,7 +11,6 @@ enum WeekAction {
     case editEvent(Occurrence)
     case hideKindThisWeek(Occurrence)
     case delete(Occurrence)
-    case restore(Occurrence)
 }
 
 /// One occurrence drawn in a day column. The caller sizes it; the contents adapt to the height.
@@ -52,7 +51,6 @@ struct OccurrenceBlock: View {
     // MARK: Contents
 
     private var color: Color { Color(hex: occurrence.colorHex) }
-    private var isSuppressed: Bool { occurrence.isSuppressed }
     private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 6) }
 
     private var timeRange: String {
@@ -70,7 +68,6 @@ struct OccurrenceBlock: View {
                 Text(occurrence.title)
                     .font(.footnote.weight(.semibold))
                     .lineLimit(height > 40 ? 2 : 1)
-                    .strikethrough(isSuppressed)
                 if !occurrence.isAllDay, height > 40 {
                     Text(timeRange)
                         .font(.caption)
@@ -90,15 +87,9 @@ struct OccurrenceBlock: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(color.opacity(0.18))
-        .overlay {
-            if isSuppressed {
-                shape.strokeBorder(color, style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
-            }
-        }
         .clipShape(shape)
         .contentShape(shape)
-        .opacity(isSuppressed ? 0.4 : 1)
-        .help(isSuppressed ? "Hidden by blackout" : helpText)
+        .help(helpText)
     }
 
     private var helpText: String {
@@ -118,13 +109,6 @@ struct OccurrenceActions: View {
 
     var body: some View {
         if occurrence.seriesID != nil {
-            if occurrence.isSuppressed {
-                Button {
-                    perform(.restore(occurrence))
-                } label: {
-                    Label("Restore (Remove Blackout)…", systemImage: "arrow.uturn.backward")
-                }
-            } else {
                 Button {
                     perform(.skip(occurrence))
                 } label: {
@@ -148,7 +132,6 @@ struct OccurrenceActions: View {
                 } label: {
                     Label("Delete \(occurrence.kind.displayName)…", systemImage: "trash")
                 }
-            }
         } else {
             Button {
                 perform(.editEvent(occurrence))
@@ -203,11 +186,6 @@ struct OccurrenceDetailsCard: View {
             }
             if let weekLine {
                 Text(weekLine)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            if occurrence.isSuppressed {
-                Label("Hidden by blackout", systemImage: "eye.slash")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

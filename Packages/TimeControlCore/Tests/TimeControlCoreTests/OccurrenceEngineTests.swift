@@ -105,3 +105,18 @@ import Testing
         #expect(OccurrenceEngine.next(after: after, series: [cs], calendar: la)?.day == d(9, 14))
     }
 }
+
+@Suite struct RoutineFlagTests {
+    let la = Calendar.app(timeZone: TimeZone(identifier: "America/Los_Angeles")!)
+    let term = TermSpec(name: "Fall 2026", start: DayKey(year: 2026, month: 9, day: 7), end: DayKey(year: 2026, month: 12, day: 18))
+
+    @Test func seriesOccurrencesAreRoutineAndEventsOnlyWhenMarked() {
+        let day = DayKey(year: 2026, month: 9, day: 7)
+        let cs = SeriesSpec(title: "CS201", term: term, weekdays: [.monday], startMinute: 600, endMinute: 660)
+        let gym = EventSpec(title: "Gym", kind: .personal, start: WeekMath.instant(day: day, minute: 420, calendar: la), end: WeekMath.instant(day: day, minute: 480, calendar: la), isRoutine: true)
+        let interview = EventSpec(title: "Interview", kind: .interview, start: WeekMath.instant(day: day, minute: 900, calendar: la), end: WeekMath.instant(day: day, minute: 960, calendar: la))
+        let occ = OccurrenceEngine.occurrences(on: day, series: [cs], events: [gym, interview], calendar: la)
+        #expect(occ.map { ($0.title, $0.isRoutine) } .map { "\($0.0):\($0.1)" } == ["Gym:true", "CS201:true", "Interview:false"])
+        #expect(occ.filter { !$0.isRoutine }.map(\.title) == ["Interview"])
+    }
+}
