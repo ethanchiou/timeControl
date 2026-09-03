@@ -24,6 +24,9 @@ final class NotificationScheduler {
     /// authorized or provisional.
     @discardableResult
     func requestAuthorization() async -> Bool {
+        #if DEBUG
+        if CommandLine.arguments.contains("--no-permission-prompts") { return false }
+        #endif
         await refreshAuthorizationStatus()
         if authorizationStatus == .notDetermined {
             do {
