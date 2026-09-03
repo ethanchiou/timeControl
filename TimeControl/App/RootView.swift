@@ -59,6 +59,9 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in rollOver() }
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
             NotificationScheduler.shared.scheduleRefresh(using: modelContext)
+            if CalendarMirrorSettings.isEnabled {
+                CalendarMirror.shared.scheduleSync(using: modelContext)
+            }
         }
     }
 
@@ -70,6 +73,14 @@ struct RootView: View {
             _ = await scheduler.requestAuthorization()
         }
         await scheduler.reschedule(using: modelContext)
+
+        if CalendarMirrorSettings.isEnabled {
+            do {
+                try await CalendarMirror.shared.sync(using: modelContext)
+            } catch {
+                print("Calendar mirror sync failed: \(error)")
+            }
+        }
     }
 
     /// Moves yesterday's unfinished todos onto today and marks them so the lists can flag them.
