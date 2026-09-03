@@ -52,6 +52,7 @@ struct WeekGrid: View {
             ScrollViewReader { proxy in
                 ScrollView(.vertical) {
                     timeline(columnWidth: columnWidth, hours: hours, plan: plan)
+                        .padding(.top, 8)   // room for the first hour label, which sits 6pt above its rule
                 }
                 .onAppear {
                     guard !didScroll else { return }
