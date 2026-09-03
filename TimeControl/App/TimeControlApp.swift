@@ -17,6 +17,9 @@ struct TimeControlApp: App {
         if CommandLine.arguments.contains("--sample-data") {
             SampleData.load(into: container.mainContext)
         }
+        if CommandLine.arguments.contains("--palette") {
+            appState.isCommandPaletteShown = true
+        }
         if let i = CommandLine.arguments.firstIndex(of: "--section"), i + 1 < CommandLine.arguments.count,
            let section = AppSection(rawValue: CommandLine.arguments[i + 1]) {
             appState.section = section
