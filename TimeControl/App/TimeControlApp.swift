@@ -13,6 +13,15 @@ struct TimeControlApp: App {
         } catch {
             fatalError("Could not open the TimeControl store: \(error)")
         }
+        #if DEBUG
+        if CommandLine.arguments.contains("--sample-data") {
+            SampleData.load(into: container.mainContext)
+        }
+        if let i = CommandLine.arguments.firstIndex(of: "--section"), i + 1 < CommandLine.arguments.count,
+           let section = AppSection(rawValue: CommandLine.arguments[i + 1]) {
+            appState.section = section
+        }
+        #endif
     }
 
     var body: some Scene {
