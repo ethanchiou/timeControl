@@ -163,7 +163,7 @@ struct TodayView: View {
                     onEditEvent: { editingEvent = $0 }, onEditSeries: { editingSeries = $0 }
                 )
                 .frame(width: geo.size.width * 0.55)
-                todoPane()
+                todoPane(scrollsInternally: true)
             }
             .padding()
         }
@@ -172,12 +172,12 @@ struct TodayView: View {
     private var compactLayout: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                todoPane(listMaxHeight: 320)
+                todoPane(scrollsInternally: false)
                 DayTimeline(
                     day: appState.selectedDay, occurrences: occurrences, term: term,
-                    onEditEvent: { editingEvent = $0 }, onEditSeries: { editingSeries = $0 }
+                    onEditEvent: { editingEvent = $0 }, onEditSeries: { editingSeries = $0 },
+                    scrollsInternally: false
                 )
-                .frame(height: 420)
             }
             .padding()
         }
@@ -186,11 +186,14 @@ struct TodayView: View {
     // MARK: Todo pane
 
     @ViewBuilder
-    private func todoPane(listMaxHeight: CGFloat? = nil) -> some View {
+    private func todoPane(scrollsInternally: Bool) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             ringSection
-            todoListSection
-                .frame(maxHeight: listMaxHeight)
+            if scrollsInternally {
+                todoListSection
+            } else {
+                todoStack
+            }
             addTodoField
         }
     }
@@ -230,6 +233,27 @@ struct TodayView: View {
         .listStyle(.inset)
         .alternatingRowBackgrounds()
         #endif
+    }
+
+    /// Non-`List` rendering for the compact layout, which embeds the todo pane in the outer `ScrollView`
+    /// (a `List` there collapses to zero height with no fixed frame to size against).
+    @ViewBuilder
+    private var todoStack: some View {
+        if dayTodos.isEmpty {
+            Text("Nothing planned for this day")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        } else {
+            VStack(spacing: 0) {
+                ForEach(Array(dayTodos.enumerated()), id: \.element.uuid) { index, todo in
+                    todoRow(todo)
+                        .padding(.vertical, 6)
+                    if index < dayTodos.count - 1 {
+                        Divider()
+                    }
+                }
+            }
+        }
     }
 
     @ViewBuilder

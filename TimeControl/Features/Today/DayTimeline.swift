@@ -9,6 +9,8 @@ struct DayTimeline: View {
     let term: Term?
     var onEditEvent: (Event) -> Void
     var onEditSeries: (Series) -> Void
+    /// When false, renders its rows directly with no internal `ScrollView` — for embedding in a caller's own scroll view.
+    var scrollsInternally: Bool = true
 
     @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
@@ -52,26 +54,12 @@ struct DayTimeline: View {
                 emptyState
             } else {
                 TimelineView(.everyMinute) { context in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 0) {
-                            if !allDayOccurrences.isEmpty {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    ForEach(allDayOccurrences) { occurrence in
-                                        allDayPill(occurrence)
-                                    }
-                                }
-                                .padding(.horizontal)
-                                .padding(.top, 8)
-                                .padding(.bottom, 4)
-                            }
-                            ForEach(rows(at: context.date)) { row in
-                                switch row {
-                                case .now: nowLine(at: context.date)
-                                case .occurrence(let occurrence): timedRow(occurrence)
-                                }
-                            }
+                    if scrollsInternally {
+                        ScrollView {
+                            timelineContent(at: context.date)
                         }
-                        .padding(.bottom, 8)
+                    } else {
+                        timelineContent(at: context.date)
                     }
                 }
             }
@@ -91,6 +79,29 @@ struct DayTimeline: View {
                 pendingDeleteOccurrence = nil
             }
         }
+    }
+
+    @ViewBuilder
+    private func timelineContent(at now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if !allDayOccurrences.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(allDayOccurrences) { occurrence in
+                        allDayPill(occurrence)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+            }
+            ForEach(rows(at: now)) { row in
+                switch row {
+                case .now: nowLine(at: now)
+                case .occurrence(let occurrence): timedRow(occurrence)
+                }
+            }
+        }
+        .padding(.bottom, 8)
     }
 
     private var emptyState: some View {
