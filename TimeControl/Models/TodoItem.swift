@@ -77,11 +77,30 @@ extension TodoItem {
         week = nil
     }
 
-    /// Open before done, then priority, then sortOrder, then creation.
+    /// Open before done, then the hand-sorted order, then priority, then creation.
+    ///
+    /// Manual order outranks priority deliberately: a drag handle whose row springs back because a
+    /// P1 outranks it is a broken drag handle. Every todo starts at `sortOrder` 0, so priority still
+    /// decides the order of a list nobody has dragged yet.
     static func listOrder(_ a: TodoItem, _ b: TodoItem) -> Bool {
         if a.isDone != b.isDone { return !a.isDone }
-        if a.priority != b.priority { return a.priority < b.priority }
         if a.sortOrder != b.sortOrder { return a.sortOrder < b.sortOrder }
+        if a.priority != b.priority { return a.priority < b.priority }
         return a.createdAt < b.createdAt
+    }
+
+    /// Writes `sortOrder` back so this list reads in exactly this order the next time it is sorted.
+    static func applyOrder(_ ordered: [TodoItem]) {
+        for (index, todo) in ordered.enumerated() where todo.sortOrder != index {
+            todo.sortOrder = index
+        }
+    }
+
+    /// Moves `moved` to sit where `target` is (or to the end) within `list`, and renumbers.
+    static func reorder(_ moved: TodoItem, before target: TodoItem?, in list: [TodoItem]) {
+        let ids = TodoOrdering.moving(moved.uuid, before: target?.uuid, in: list.map(\.uuid))
+        var byID = Dictionary(list.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
+        byID[moved.uuid] = moved
+        applyOrder(ids.compactMap { byID[$0] })
     }
 }

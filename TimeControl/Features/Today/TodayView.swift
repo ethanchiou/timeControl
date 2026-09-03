@@ -286,6 +286,8 @@ struct TodayView: View {
     @ViewBuilder
     private func todoRow(_ todo: TodoItem) -> some View {
         HStack(spacing: 6) {
+            TodoGrip()
+                .draggable(todo.uuid.uuidString)
             TodoRow(todo: todo)
             if appState.rolledOverTodoIDs.contains(todo.uuid) {
                 Image(systemName: "arrow.uturn.forward.circle")
@@ -293,6 +295,15 @@ struct TodayView: View {
                     .foregroundStyle(.secondary)
                     .help("Rolled over from an earlier day")
             }
+        }
+        .contentShape(.rect)
+        .dropDestination(for: String.self) { payloads, _ in
+            guard let dragged = resolveTodo(payloads) else { return false }
+            withAnimation(.snappy) {
+                // This pane is one day's list, so a drop only ever changes the order within it.
+                TodoItem.reorder(dragged, before: todo, in: dayTodos)
+            }
+            return true
         }
         .contextMenu {
             Menu("Schedule") {
@@ -304,6 +315,11 @@ struct TodayView: View {
         .swipeActions {
             Button("Delete", role: .destructive) { modelContext.delete(todo) }
         }
+    }
+
+    private func resolveTodo(_ payloads: [String]) -> TodoItem? {
+        guard let uuid = payloads.compactMap({ UUID(uuidString: $0) }).first else { return nil }
+        return todos.first { $0.uuid == uuid }
     }
 
     private var addTodoField: some View {

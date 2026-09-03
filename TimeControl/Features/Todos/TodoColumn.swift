@@ -100,10 +100,14 @@ struct TodoColumn: View {
         }
         .listStyle(.plain)
         .dropDestination(for: String.self) { payloads, _ in
-            let dropped = payloads.compactMap { UUID(uuidString: $0).flatMap { lookup[$0] } }
+            let dropped = resolve(payloads)
             guard !dropped.isEmpty else { return false }
             withAnimation(.snappy) {
-                for todo in dropped { onDrop(todo) }
+                for todo in dropped {
+                    onDrop(todo)
+                    // Let go over empty space: send it to the end of this bucket.
+                    TodoItem.reorder(todo, before: nil, in: todos)
+                }
             }
             return true
         }
@@ -112,6 +116,8 @@ struct TodoColumn: View {
     @ViewBuilder
     private func row(_ todo: TodoItem) -> some View {
         HStack(spacing: 6) {
+            TodoGrip()
+                .draggable(todo.uuid.uuidString)
             TodoRow(todo: todo, showsProject: true)
             if appState.rolledOverTodoIDs.contains(todo.uuid) {
                 Image(systemName: "arrow.uturn.forward.circle")
@@ -122,7 +128,16 @@ struct TodoColumn: View {
             }
         }
         .contentShape(.rect)
-        .draggable(todo.uuid.uuidString)
+        // Dropping onto a row puts the dragged todo in this bucket at that row's position; the
+        // list's own drop destination below catches anything let go over empty space.
+        .dropDestination(for: String.self) { payloads, _ in
+            guard let dragged = resolve(payloads).first else { return false }
+            withAnimation(.snappy) {
+                onDrop(dragged)
+                TodoItem.reorder(dragged, before: todo, in: todos)
+            }
+            return true
+        }
         .contextMenu {
             Menu("Schedule") { ScheduleMenuItems(todo: todo) }
             Button("Edit…") { onEdit(todo) }
@@ -152,6 +167,10 @@ struct TodoColumn: View {
     }
 
     // MARK: Actions
+
+    private func resolve(_ payloads: [String]) -> [TodoItem] {
+        payloads.compactMap { UUID(uuidString: $0).flatMap { lookup[$0] } }
+    }
 
     private func submit() {
         let title = draft.trimmingCharacters(in: .whitespaces)
