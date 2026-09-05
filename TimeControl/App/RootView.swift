@@ -86,17 +86,24 @@ struct RootView: View {
         #endif
         .onAppear {
             modelContext.undoManager = undoManager
+            backUp()
             rollOver()
             Task { await refreshBackgroundServices(requestingAuthorization: true) }
         }
         .onChange(of: undoManager) { _, new in modelContext.undoManager = new }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
+                backUp()
                 rollOver()
                 Task { await refreshBackgroundServices(requestingAuthorization: false) }
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in rollOver() }
+        // A Mac left open across midnight never re-activates, so the day roll is its own trigger:
+        // this is the moment yesterday's final state gets written.
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+            backUp()
+            rollOver()
+        }
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
             NotificationScheduler.shared.scheduleRefresh(using: modelContext)
             if CalendarMirrorSettings.isEnabled {
@@ -121,6 +128,12 @@ struct RootView: View {
                 print("Calendar mirror sync failed: \(error)")
             }
         }
+    }
+
+    /// Writes the day's automatic backup. Runs before ``rollOver()``, which rewrites todo days in
+    /// place, so the file keeps the schedule as the day actually ended.
+    private func backUp() {
+        AutoBackupService.runIfNeeded(in: modelContext)
     }
 
     /// Moves yesterday's unfinished todos onto today and marks them so the lists can flag them.
