@@ -43,7 +43,7 @@ struct ProjectsView: View {
 
                 if filtered.isEmpty {
                     ContentUnavailableView {
-                        Label("No \(filter.title.lowercased()) projects", systemImage: "square.grid.2x2")
+                        Label { Text("No \(filter.title.lowercased()) projects") } icon: { EmptyStateIllustration(.projects) }
                     } actions: {
                         Button("Add Project") { showingNewProject = true }
                     }

@@ -106,9 +106,7 @@ struct DayTimeline: View {
 
     private var emptyState: some View {
         VStack(spacing: 8) {
-            Image(systemName: "calendar")
-                .font(.title)
-                .foregroundStyle(.secondary)
+            EmptyStateIllustration(.today, size: 72)
             Text("Nothing scheduled")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

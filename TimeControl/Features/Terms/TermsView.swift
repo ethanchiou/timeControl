@@ -19,7 +19,7 @@ struct TermsView: View {
             Group {
                 if terms.isEmpty {
                     ContentUnavailableView {
-                        Label("No terms yet", systemImage: "graduationcap")
+                        Label { Text("No terms yet") } icon: { EmptyStateIllustration(.terms) }
                     } actions: {
                         Button("Add Term") { showingNewTerm = true }
                     }

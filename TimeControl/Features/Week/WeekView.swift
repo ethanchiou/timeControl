@@ -228,7 +228,7 @@ struct WeekView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("No schedule yet", systemImage: "calendar.badge.plus")
+            Label { Text("No schedule yet") } icon: { EmptyStateIllustration(.calendar) }
         } description: {
             Text("Set up a term and add your courses, and they will fill this week.")
         } actions: {
