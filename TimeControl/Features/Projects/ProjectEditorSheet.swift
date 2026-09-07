@@ -4,8 +4,6 @@ import TimeControlCore
 
 /// Create or edit a project. Present as a sheet.
 struct ProjectEditorSheet: View {
-    static let swatches = ["#4F7CFF", "#A855F7", "#10B981", "#F59E0B", "#E5484D", "#06B6D4", "#EC4899", "#6B7280"]
-
     let project: Project?
 
     @Environment(\.modelContext) private var modelContext
@@ -17,7 +15,7 @@ struct ProjectEditorSheet: View {
     @State private var priority: Priority
     @State private var hasTarget: Bool
     @State private var targetDate: Date
-    @State private var colorHex: String
+    @State private var colorHex: String?
     @State private var notes: String
     @State private var confirmDelete = false
 
@@ -28,7 +26,7 @@ struct ProjectEditorSheet: View {
         _priority = State(initialValue: Priority(clamping: project?.priority ?? 3))
         _hasTarget = State(initialValue: project?.targetDay != nil)
         _targetDate = State(initialValue: (project?.targetDay ?? .today()).startDate())
-        _colorHex = State(initialValue: project?.colorHex ?? Self.swatches[0])
+        _colorHex = State(initialValue: project?.colorHex ?? ColorSwatchRow.palette[0])
         _notes = State(initialValue: project?.notes ?? "")
     }
 
@@ -58,7 +56,7 @@ struct ProjectEditorSheet: View {
                 }
 
                 Section("Color") {
-                    swatchRow
+                    ColorSwatchRow(selection: $colorHex)
                 }
 
                 Section("Notes") {
@@ -103,28 +101,6 @@ struct ProjectEditorSheet: View {
         return "Delete \(project.title)? Its \(count) todos will be kept without a project."
     }
 
-    private var swatchRow: some View {
-        HStack(spacing: 12) {
-            ForEach(Self.swatches, id: \.self) { hex in
-                Button {
-                    colorHex = hex
-                } label: {
-                    Circle()
-                        .fill(Color(hex: hex))
-                        .frame(width: 28, height: 28)
-                        .overlay {
-                            if colorHex == hex {
-                                Image(systemName: "checkmark")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(.white)
-                            }
-                        }
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
     private func save() {
         let t = title.trimmingCharacters(in: .whitespaces)
         let day = hasTarget ? DayKey(targetDate) : nil
@@ -133,11 +109,11 @@ struct ProjectEditorSheet: View {
             project.summary = summary
             project.priority = priority.rawValue
             project.targetDay = day
-            project.colorHex = colorHex
+            project.colorHex = colorHex ?? ColorSwatchRow.palette[0]
             project.notes = notes
         } else {
             let nextSortOrder = (projects.map(\.sortOrder).max() ?? -1) + 1
-            let newProject = Project(title: t, summary: summary, priority: priority.rawValue, targetDay: day, colorHex: colorHex, sortOrder: nextSortOrder)
+            let newProject = Project(title: t, summary: summary, priority: priority.rawValue, targetDay: day, colorHex: colorHex ?? ColorSwatchRow.palette[0], sortOrder: nextSortOrder)
             newProject.notes = notes
             modelContext.insert(newProject)
         }

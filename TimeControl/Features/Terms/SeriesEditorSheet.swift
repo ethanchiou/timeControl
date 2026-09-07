@@ -20,6 +20,8 @@ struct SeriesEditorSheet: View {
     @State private var endWeek: Int
     @State private var location: String
     @State private var notes: String
+    /// nil = follow the kind's colour.
+    @State private var colorHex: String?
     @State private var confirmDelete = false
 
     /// `template` is the course a new time slot belongs to: its title, kind, location, notes and weeks are
@@ -45,6 +47,7 @@ struct SeriesEditorSheet: View {
         _endWeek = State(initialValue: details?.endWeek ?? term.weekCount)
         _location = State(initialValue: details?.location ?? "")
         _notes = State(initialValue: details?.notes ?? "")
+        _colorHex = State(initialValue: details?.colorHex)
     }
 
     private var isEditing: Bool { series != nil }
@@ -79,6 +82,10 @@ struct SeriesEditorSheet: View {
 
                 Section("Days") {
                     WeekdayChips(selection: $weekdays)
+                }
+
+                Section("Color") {
+                    ColorSwatchRow(selection: $colorHex, matching: kind)
                 }
 
                 Section("Time") {
@@ -157,6 +164,7 @@ struct SeriesEditorSheet: View {
         intervalWeeks = source.intervalWeeks
         startWeek = source.startWeek
         endWeek = source.endWeek
+        colorHex = source.colorHex
     }
 
     private var scheduleSummary: String {
@@ -179,11 +187,13 @@ struct SeriesEditorSheet: View {
             series.endWeek = endWeek
             series.location = location
             series.notes = notes
+            series.colorHex = colorHex
         } else {
             let s = Series(
                 title: t, kind: kind, weekdays: weekdays, startMinute: startMinute, endMinute: endMinute,
                 intervalWeeks: intervalWeeks, startWeek: startWeek, endWeek: endWeek, location: location, notes: notes
             )
+            s.colorHex = colorHex
             modelContext.insert(s)
             s.term = term
         }
