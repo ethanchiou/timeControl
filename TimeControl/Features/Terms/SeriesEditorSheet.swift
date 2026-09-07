@@ -22,19 +22,29 @@ struct SeriesEditorSheet: View {
     @State private var notes: String
     @State private var confirmDelete = false
 
-    init(term: Term, series: Series? = nil, initialWeekdays: Set<Weekday> = [], initialStartMinute: Int = 600) {
+    /// `template` is the course a new time slot belongs to: its title, kind, location, notes and weeks are
+    /// copied so the second slot of CS201 is CS201 without retyping anything.
+    init(
+        term: Term,
+        series: Series? = nil,
+        initialWeekdays: Set<Weekday> = [],
+        initialStartMinute: Int = 600,
+        initialEndMinute: Int? = nil,
+        template: Series? = nil
+    ) {
         self.term = term
         self.series = series
-        _title = State(initialValue: series?.title ?? "")
-        _kind = State(initialValue: series?.kind ?? .course)
+        let details = series ?? template
+        _title = State(initialValue: details?.title ?? "")
+        _kind = State(initialValue: details?.kind ?? .course)
         _weekdays = State(initialValue: series?.weekdays ?? initialWeekdays)
         _start = State(initialValue: Self.date(minute: series?.startMinute ?? initialStartMinute))
-        _end = State(initialValue: Self.date(minute: series?.endMinute ?? initialStartMinute + 90))
-        _intervalWeeks = State(initialValue: series?.intervalWeeks ?? 1)
-        _startWeek = State(initialValue: series?.startWeek ?? 1)
-        _endWeek = State(initialValue: series?.endWeek ?? term.weekCount)
-        _location = State(initialValue: series?.location ?? "")
-        _notes = State(initialValue: series?.notes ?? "")
+        _end = State(initialValue: Self.date(minute: series?.endMinute ?? initialEndMinute ?? initialStartMinute + 90))
+        _intervalWeeks = State(initialValue: details?.intervalWeeks ?? 1)
+        _startWeek = State(initialValue: details?.startWeek ?? 1)
+        _endWeek = State(initialValue: details?.endWeek ?? term.weekCount)
+        _location = State(initialValue: details?.location ?? "")
+        _notes = State(initialValue: details?.notes ?? "")
     }
 
     private var isEditing: Bool { series != nil }
@@ -49,12 +59,22 @@ struct SeriesEditorSheet: View {
             Form {
                 Section {
                     TextField("Title", text: $title, prompt: Text("CS201 Data Structures"))
+                        .onSubmit { if canSave { save() } }
                     Picker("Kind", selection: $kind) {
                         ForEach(Kind.allCases) { k in
                             Label(k.displayName, systemImage: k.symbolName).tag(k)
                         }
                     }
                     TextField("Location", text: $location, prompt: Text("Room 204"))
+                    if !isEditing, !existingTitles.isEmpty {
+                        Menu {
+                            ForEach(existingTitles, id: \.self) { existing in
+                                Button(existing) { copyDetails(fromCourseTitled: existing) }
+                            }
+                        } label: {
+                            Label("Same Course As…", systemImage: "doc.on.doc")
+                        }
+                    }
                 }
 
                 Section("Days") {
@@ -101,9 +121,11 @@ struct SeriesEditorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isEditing ? "Save" : "Add") { save() }.disabled(!canSave)
+                    Button(isEditing ? "Save" : "Add") { save() }.keyboardShortcut(.defaultAction).disabled(!canSave)
                 }
             }
             .confirmationDialog("Delete this course and all its occurrences?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -118,6 +140,23 @@ struct SeriesEditorSheet: View {
         #else
         .presentationDetents([.large])
         #endif
+    }
+
+    /// Distinct titles already in the term, so another time slot can join a course by name.
+    private var existingTitles: [String] {
+        var seen: Set<String> = []
+        return term.sortedSeries.map(\.title).filter { seen.insert($0).inserted }
+    }
+
+    private func copyDetails(fromCourseTitled existing: String) {
+        guard let source = term.sortedSeries.first(where: { $0.title == existing }) else { return }
+        title = source.title
+        kind = source.kind
+        location = source.location
+        notes = source.notes
+        intervalWeeks = source.intervalWeeks
+        startWeek = source.startWeek
+        endWeek = source.endWeek
     }
 
     private var scheduleSummary: String {

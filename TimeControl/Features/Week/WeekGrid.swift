@@ -31,7 +31,8 @@ struct WeekGrid: View {
         let plan = DayPlan(occurrences: occurrences)
         let hours = WeekLayout.hourRange(covering: plan.items)
         GeometryReader { geo in
-            let flexible = max(0, geo.size.width - gutter) / CGFloat(dayList.count)
+            let available = geo.size.width - DayGridMetrics.verticalScrollerInset
+            let flexible = max(0, available - gutter) / CGFloat(dayList.count)
             let columnWidth = max(minColumnWidth, flexible)
             if columnWidth > flexible {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -45,7 +46,9 @@ struct WeekGrid: View {
 
     /// The whole week at a known column width, so it can sit inside a horizontal scroll view when narrow.
     private func grid(columnWidth: CGFloat, hours: ClosedRange<Int>, plan: DayPlan) -> some View {
-        VStack(spacing: 0) {
+        // Leading: the scrolling half reports itself a scroller wider than the frame below, and a
+        // centred stack would pay for that by pushing the header and all-day rows off their columns.
+        VStack(alignment: .leading, spacing: 0) {
             headerRow(columnWidth: columnWidth)
             Divider()
             if !plan.allDay.isEmpty || !todos.isEmpty {
@@ -139,9 +142,11 @@ struct WeekGrid: View {
                         TodoChip(todo: todo, onEdit: onEditTodo)
                     }
                 }
-                .frame(width: columnWidth, alignment: .top)
+                // Inset inside the column, not around it: padding outside the frame would make every
+                // cell 4pt wider than the header and timeline columns and drift the row off them.
                 .padding(.horizontal, 2)
                 .padding(.vertical, 4)
+                .frame(width: columnWidth, alignment: .top)
                 .overlay(alignment: .leading) { columnSeparator }
             }
         }
@@ -152,9 +157,9 @@ struct WeekGrid: View {
     private func timeline(columnWidth: CGFloat, hours: ClosedRange<Int>, plan: DayPlan) -> some View {
         let height = CGFloat(hours.upperBound - hours.lowerBound) * hourHeight
         return ZStack(alignment: .topLeading) {
-            hourLines(hours: hours)
+            HourLines(hours: hours, hourHeight: hourHeight)
             HStack(spacing: 0) {
-                gutterLabels(hours: hours)
+                HourGutterLabels(hours: hours, hourHeight: hourHeight)
                     .frame(width: gutter, height: height, alignment: .topLeading)
                 ForEach(dayList, id: \.self) { day in
                     column(day: day, columnWidth: columnWidth, hours: hours, plan: plan)
@@ -166,41 +171,6 @@ struct WeekGrid: View {
         }
         .frame(height: height, alignment: .topLeading)
         .padding(.bottom, 16)
-    }
-
-    /// Hour and half-hour rules. Each hour row carries its hour as a scroll anchor.
-    private func hourLines(hours: ClosedRange<Int>) -> some View {
-        VStack(spacing: 0) {
-            ForEach(hours.lowerBound..<hours.upperBound, id: \.self) { hour in
-                ZStack(alignment: .top) {
-                    Rectangle().fill(.quaternary).frame(height: 0.5)
-                    Rectangle().fill(.quinary).frame(height: 0.5).offset(y: hourHeight / 2)
-                }
-                .frame(height: hourHeight, alignment: .top)
-                .id(hour)
-            }
-        }
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(.quaternary).frame(height: 0.5)
-        }
-    }
-
-    private func gutterLabels(hours: ClosedRange<Int>) -> some View {
-        ZStack(alignment: .topTrailing) {
-            Color.clear
-            ForEach(hours, id: \.self) { hour in
-                Text(hourLabel(hour))
-                    .font(.caption2)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .offset(x: -6, y: CGFloat(hour - hours.lowerBound) * hourHeight - 6)
-            }
-        }
-    }
-
-    private func hourLabel(_ hour: Int) -> String {
-        WeekMath.instant(day: DayKey.epoch + hour / 24, minute: (hour % 24) * 60)
-            .formatted(.dateTime.hour())
     }
 
     private func column(day: DayKey, columnWidth: CGFloat, hours: ClosedRange<Int>, plan: DayPlan) -> some View {
