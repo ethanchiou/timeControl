@@ -55,6 +55,7 @@ struct TodoEditorSheet: View {
             Form {
                 Section {
                     TextField("Title", text: $title, prompt: Text("What needs doing?"))
+                        .onSubmit { if canSave { save() } }
                     Picker("Priority", selection: $priority) {
                         ForEach(Priority.allCases) { p in
                             Label(p.title, systemImage: p.symbolName).tag(p)
@@ -110,9 +111,9 @@ struct TodoEditorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isEditing ? "Save" : "Add") { save() }.disabled(!canSave)
+                    Button(isEditing ? "Save" : "Add") { save() }.keyboardShortcut(.defaultAction).disabled(!canSave)
                 }
             }
             .confirmationDialog("Delete this todo?", isPresented: $confirmDelete, titleVisibility: .visible) {

@@ -40,6 +40,7 @@ struct ProjectEditorSheet: View {
             Form {
                 Section {
                     TextField("Title", text: $title, prompt: Text("Project title"))
+                        .onSubmit { if canSave { save() } }
                     TextField("Summary", text: $summary, axis: .vertical)
                         .lineLimit(2...4)
                     Picker("Priority", selection: $priority) {
@@ -77,9 +78,9 @@ struct ProjectEditorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isEditing ? "Save" : "Add") { save() }.disabled(!canSave)
+                    Button(isEditing ? "Save" : "Add") { save() }.keyboardShortcut(.defaultAction).disabled(!canSave)
                 }
             }
             .confirmationDialog(deleteConfirmationTitle, isPresented: $confirmDelete, titleVisibility: .visible) {

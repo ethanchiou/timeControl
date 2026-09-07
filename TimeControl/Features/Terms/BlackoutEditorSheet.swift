@@ -69,6 +69,7 @@ struct BlackoutEditorSheet: View {
 
                 Section("Reason") {
                     TextField("Reason", text: $reason, prompt: Text("Exam period"))
+                        .onSubmit { if canSave { save() } }
                 }
 
                 Section {
@@ -92,9 +93,9 @@ struct BlackoutEditorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isEditing ? "Save" : "Clear") { save() }.disabled(!canSave)
+                    Button(isEditing ? "Save" : "Clear") { save() }.keyboardShortcut(.defaultAction).disabled(!canSave)
                 }
             }
         }

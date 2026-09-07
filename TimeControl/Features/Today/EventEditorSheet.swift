@@ -62,6 +62,7 @@ struct EventEditorSheet: View {
             Form {
                 Section {
                     TextField("Title", text: $title, prompt: Text("Interview, exam, appointment…"))
+                        .onSubmit { if canSave { save() } }
                     Picker("Kind", selection: $kind) {
                         ForEach(Kind.allCases) { k in
                             Label(k.displayName, systemImage: k.symbolName).tag(k)
@@ -108,9 +109,9 @@ struct EventEditorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isEditing ? "Save" : "Add") { save() }.disabled(!canSave)
+                    Button(isEditing ? "Save" : "Add") { save() }.keyboardShortcut(.defaultAction).disabled(!canSave)
                 }
             }
             .onChange(of: kind) { _, newKind in

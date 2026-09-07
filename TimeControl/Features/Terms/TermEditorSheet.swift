@@ -15,7 +15,7 @@ struct TermEditorSheet: View {
 
     init(term: Term?) {
         self.term = term
-        _name = State(initialValue: term?.name ?? "")
+        _name = State(initialValue: term?.name ?? Self.suggestedName(for: .today()))
         _startDate = State(initialValue: term?.start.startDate() ?? DayKey.today().startDate())
         _endDate = State(initialValue: term?.end.startDate() ?? (DayKey.today() + 104).startDate())  // 15 weeks
     }
@@ -38,6 +38,7 @@ struct TermEditorSheet: View {
             Form {
                 Section {
                     TextField("Name", text: $name, prompt: Text("Fall 2026"))
+                        .onSubmit { if canSave { save() } }
                     DatePicker("Starts", selection: $startDate, displayedComponents: .date)
                     DatePicker("Ends", selection: $endDate, displayedComponents: .date)
                     if endDayKey < startDayKey {
@@ -53,9 +54,12 @@ struct TermEditorSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isEditing ? "Save" : "Add") { save() }.disabled(!canSave)
+                    // The default action, so Return adds and the button reads as the one to press.
+                    Button(isEditing ? "Save" : "Add") { save() }.keyboardShortcut(.defaultAction).disabled(!canSave)
                 }
             }
         }
@@ -64,6 +68,18 @@ struct TermEditorSheet: View {
         #else
         .presentationDetents([.large])
         #endif
+    }
+
+    /// "Fall 2026" for a term starting in September: a name to keep or retype, so a new term can be added
+    /// straight away instead of sitting behind a disabled button that looks no different from an enabled one.
+    private static func suggestedName(for day: DayKey) -> String {
+        let civil = day.civil
+        let season = switch civil.month {
+        case 1...4: "Spring"
+        case 5...7: "Summer"
+        default: "Fall"
+        }
+        return "\(season) \(civil.year)"
     }
 
     private func save() {
