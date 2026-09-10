@@ -90,6 +90,10 @@ public struct EventSpec: Hashable, Sendable, Identifiable {
     public var reminderOffsetsMinutes: [Int]
     /// A recurring-ish thing you added by hand (gym, club). Hidden together with courses by the routine filter.
     public var isRoutine: Bool
+    /// Overrides the kind's colour on the calendar; nil follows the kind.
+    public var colorHex: String?
+    /// The shared group this event belongs to; nil for a personal event.
+    public var groupID: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -100,7 +104,9 @@ public struct EventSpec: Hashable, Sendable, Identifiable {
         isAllDay: Bool = false,
         location: String = "",
         reminderOffsetsMinutes: [Int] = [],
-        isRoutine: Bool = false
+        isRoutine: Bool = false,
+        colorHex: String? = nil,
+        groupID: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -111,6 +117,8 @@ public struct EventSpec: Hashable, Sendable, Identifiable {
         self.location = location
         self.reminderOffsetsMinutes = reminderOffsetsMinutes
         self.isRoutine = isRoutine
+        self.colorHex = colorHex
+        self.groupID = groupID
     }
 }
 
@@ -198,8 +206,10 @@ public struct Occurrence: Hashable, Sendable, Identifiable {
     public var suppressedBy: UUID?
     /// True for every series occurrence and for events marked routine; the eye filter hides these.
     public var isRoutine: Bool
+    /// The shared group a group event belongs to; nil for personal items. The eye filter can hide these too.
+    public var groupID: UUID?
 
-    public init(source: Source, title: String, kind: Kind, day: DayKey, start: Date, end: Date, isAllDay: Bool = false, location: String = "", colorHex: String? = nil, suppressedBy: UUID? = nil, isRoutine: Bool = false) {
+    public init(source: Source, title: String, kind: Kind, day: DayKey, start: Date, end: Date, isAllDay: Bool = false, location: String = "", colorHex: String? = nil, suppressedBy: UUID? = nil, isRoutine: Bool = false, groupID: UUID? = nil) {
         self.source = source
         self.title = title
         self.kind = kind
@@ -211,12 +221,15 @@ public struct Occurrence: Hashable, Sendable, Identifiable {
         self.colorHex = colorHex ?? kind.colorHex
         self.suppressedBy = suppressedBy
         self.isRoutine = isRoutine
+        self.groupID = groupID
     }
 
     /// Stable key, shared with notification identifiers and the EventKit mirror.
     public var id: String { Occurrence.key(for: source) }
 
     public var isSuppressed: Bool { suppressedBy != nil }
+
+    public var isGroup: Bool { groupID != nil }
 
     public var seriesID: UUID? {
         if case .series(let id, _) = source { return id }

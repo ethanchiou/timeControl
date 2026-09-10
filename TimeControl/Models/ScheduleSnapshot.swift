@@ -2,17 +2,37 @@ import Foundation
 import SwiftData
 import TimeControlCore
 
+/// What the eye filter hides. Two independent flags: routine items (course occurrences and events
+/// marked routine) and group items (events shared through a group). Empty shows everything.
+nonisolated struct OccurrenceFilter: OptionSet, Hashable, Sendable {
+    let rawValue: Int
+
+    static let routine = OccurrenceFilter(rawValue: 1 << 0)
+    static let group = OccurrenceFilter(rawValue: 1 << 1)
+
+    /// Whether the filter drops this occurrence.
+    func hides(_ occurrence: Occurrence) -> Bool {
+        (contains(.routine) && occurrence.isRoutine) || (contains(.group) && occurrence.isGroup)
+    }
+}
+
 /// Everything the occurrence engine needs, converted from models to specs once per render.
 /// Build it from `@Query` results in a view, or with `load(from:)` outside SwiftUI.
+///
+/// Group events paint in their group's colour for this member (`SharedGroup.effectiveColorHex`), which is
+/// resolved here so the engine and every view see one `colorHex`.
 struct ScheduleSnapshot {
     var series: [SeriesSpec]
     var events: [EventSpec]
     var blackouts: [BlackoutSpec]
     var exceptions: [ExceptionSpec]
 
-    init(series: [Series], events: [Event], blackouts: [Blackout], exceptions: [OccurrenceException]) {
+    init(series: [Series], events: [Event], blackouts: [Blackout], exceptions: [OccurrenceException], groups: [SharedGroup] = []) {
+        let colorByGroup = Dictionary(groups.map { ($0.uuid, $0.effectiveColorHex) }, uniquingKeysWith: { first, _ in first })
         self.series = series.compactMap(\.spec)
-        self.events = events.map(\.spec)
+        self.events = events.map { event in
+            event.spec(groupColorHex: event.groupID.flatMap { colorByGroup[$0] })
+        }
         self.blackouts = blackouts.map(\.spec)
         self.exceptions = exceptions.filter { $0.series != nil }.map(\.spec)
     }
@@ -24,19 +44,20 @@ struct ScheduleSnapshot {
             series: (try? context.fetch(FetchDescriptor<Series>())) ?? [],
             events: (try? context.fetch(FetchDescriptor<Event>())) ?? [],
             blackouts: (try? context.fetch(FetchDescriptor<Blackout>())) ?? [],
-            exceptions: (try? context.fetch(FetchDescriptor<OccurrenceException>())) ?? []
+            exceptions: (try? context.fetch(FetchDescriptor<OccurrenceException>())) ?? [],
+            groups: (try? context.fetch(FetchDescriptor<SharedGroup>())) ?? []
         )
     }
 
-    /// Blacked-out occurrences are dropped unless `includeSuppressed`. `hidingRoutine` also drops
-    /// series occurrences and routine events, leaving only one-time items (the eye filter).
-    func occurrences(in days: ClosedRange<DayKey>, includeSuppressed: Bool = false, hidingRoutine: Bool = false) -> [Occurrence] {
+    /// Blacked-out occurrences are dropped unless `includeSuppressed`. `hiding` is the eye filter:
+    /// routine items, group items, or both.
+    func occurrences(in days: ClosedRange<DayKey>, includeSuppressed: Bool = false, hiding: OccurrenceFilter = []) -> [Occurrence] {
         let all = OccurrenceEngine.occurrences(in: days, series: series, events: events, blackouts: blackouts, exceptions: exceptions)
-        return all.filter { (includeSuppressed || !$0.isSuppressed) && !(hidingRoutine && $0.isRoutine) }
+        return all.filter { (includeSuppressed || !$0.isSuppressed) && !hiding.hides($0) }
     }
 
-    func occurrences(on day: DayKey, includeSuppressed: Bool = false, hidingRoutine: Bool = false) -> [Occurrence] {
-        occurrences(in: day...day, includeSuppressed: includeSuppressed, hidingRoutine: hidingRoutine)
+    func occurrences(on day: DayKey, includeSuppressed: Bool = false, hiding: OccurrenceFilter = []) -> [Occurrence] {
+        occurrences(in: day...day, includeSuppressed: includeSuppressed, hiding: hiding)
     }
 
     func next(after now: Date = Date()) -> Occurrence? {

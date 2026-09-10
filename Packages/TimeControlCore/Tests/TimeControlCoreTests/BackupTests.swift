@@ -11,6 +11,8 @@ import Testing
     let eventID = UUID(uuidString: "00000000-0000-0000-0000-000000000005")!
     let projectID = UUID(uuidString: "00000000-0000-0000-0000-000000000006")!
     let todoID = UUID(uuidString: "00000000-0000-0000-0000-000000000007")!
+    let groupID = UUID(uuidString: "00000000-0000-0000-0000-000000000008")!
+    let authorID = UUID(uuidString: "00000000-0000-0000-0000-000000000009")!
 
     let fixedDate = Date(timeIntervalSince1970: 1_700_000_000)
 
@@ -21,10 +23,21 @@ import Testing
             series: [SeriesDTO(id: seriesID, termID: termID, title: "CS201", kindRaw: "course", weekdaysMask: 0b0010101, startMinute: 600, endMinute: 690, intervalWeeks: 1, startWeek: 1, endWeek: 14, location: "Room 5", notes: "Bring laptop", colorHex: "#4F7CFF")],
             blackouts: [BlackoutDTO(id: blackoutID, termID: termID, startDayKey: 150, endDayKey: 156, kindsRaw: ["course"], reason: "Midterms")],
             exceptions: [ExceptionDTO(id: exceptionID, seriesID: seriesID, dayKey: 120, kindRaw: "skipped")],
-            events: [EventDTO(id: eventID, title: "Interview", kindRaw: "interview", startDate: fixedDate, endDate: fixedDate.addingTimeInterval(3600), isAllDay: false, location: "Zoom", notes: "Bring resume", reminderOffsetsMinutes: [30, 60])],
+            events: [EventDTO(id: eventID, title: "Interview", kindRaw: "interview", startDate: fixedDate, endDate: fixedDate.addingTimeInterval(3600), isAllDay: false, location: "Zoom", notes: "Bring resume", reminderOffsetsMinutes: [30, 60], colorHex: "#EC4899", groupID: groupID, authorID: authorID)],
             projects: [ProjectDTO(id: projectID, title: "Thesis", summary: "Final project", notes: "Chapter 3", statusRaw: "active", priority: 1, targetDayKey: 300, colorHex: "#A855F7", sortOrder: 0, createdAt: fixedDate, completedAt: nil)],
             todos: [TodoDTO(id: todoID, title: "Write intro", notes: "Draft only", priority: 2, isDone: false, completedAt: nil, dayKey: 101, weekKey: nil, dueDayKey: 105, sortOrder: 0, createdAt: fixedDate, projectID: projectID)]
         )
+    }
+
+    /// Backups from before events could pick a colour carry no key for it.
+    @Test func anEventWithoutAColourDecodesAsFollowingItsKind() throws {
+        let json = #"{"id":"00000000-0000-0000-0000-000000000005","title":"Interview","kindRaw":"interview"}"#
+        let dto = try JSONDecoder().decode(EventDTO.self, from: Data(json.utf8))
+        #expect(dto.colorHex == nil)
+        #expect(dto.title == "Interview")
+        // Same for shared groups: backups from before groups carry no key for either.
+        #expect(dto.groupID == nil)
+        #expect(dto.authorID == nil)
     }
 
     @Test func roundTripPreservesAFullyPopulatedDocument() throws {

@@ -19,6 +19,7 @@ struct WeekView: View {
     @Query private var allExceptions: [OccurrenceException]
     @Query private var allTerms: [Term]
     @Query private var allTodos: [TodoItem]
+    @Query private var allGroups: [SharedGroup]
 
     @State private var sheet: Sheet?
     @State private var confirmation: Confirmation?
@@ -26,7 +27,7 @@ struct WeekView: View {
     @FocusState private var isGridFocused: Bool
 
     var body: some View {
-        let hiddenCount = snapshot.occurrences(in: days()).filter(\.isRoutine).count
+        let hiddenCount = snapshot.occurrences(in: days()).filter { appState.hiddenFilter.hides($0) }.count
         return Group {
             #if os(iOS)
             // The iOS TabView provides no navigation stack, and the week's controls live in the bar.
@@ -105,7 +106,7 @@ struct WeekView: View {
 
     /// Built once per body evaluation; blocks never query for themselves.
     private var snapshot: ScheduleSnapshot {
-        ScheduleSnapshot(series: allSeries, events: allEvents, blackouts: allBlackouts, exceptions: allExceptions)
+        ScheduleSnapshot(series: allSeries, events: allEvents, blackouts: allBlackouts, exceptions: allExceptions, groups: allGroups)
     }
 
     /// The span `pageOffset` pages away from the one on screen, from the scale. Compact iOS narrows
@@ -187,7 +188,7 @@ struct WeekView: View {
     @ViewBuilder
     private func calendar(pageOffset: Int) -> some View {
         let span = days(pageOffset: pageOffset)
-        let shown = snapshot.occurrences(in: span, hidingRoutine: appState.hidesRoutine)
+        let shown = snapshot.occurrences(in: span, hiding: appState.hiddenFilter)
         let weeks = term(in: span)?.weeks
         if appState.calendarScale == .month {
             MonthGrid(

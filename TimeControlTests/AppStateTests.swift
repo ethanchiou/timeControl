@@ -69,4 +69,21 @@ import TimeControlCore
         appState.calendarScale = .day
         #expect(appState.selectedDay == day)
     }
+
+    /// Upcoming is for what is coming that is not the timetable, so it opens filtered and keeps its
+    /// own setting apart from the calendar's scales.
+    @Test func upcomingOpensFilteredWithItsOwnEye() {
+        let appState = AppState()
+        appState.section = .upcoming
+        #expect(appState.hidesRoutine)
+        appState.hidesRoutine = false
+
+        appState.section = .calendar
+        appState.calendarScale = .week
+        #expect(!appState.hidesRoutine)
+        appState.hidesRoutine = true
+
+        appState.section = .upcoming
+        #expect(!appState.hidesRoutine)
+    }
 }

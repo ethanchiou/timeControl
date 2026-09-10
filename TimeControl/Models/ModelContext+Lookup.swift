@@ -21,6 +21,12 @@ extension ModelContext {
         return try? fetch(d).first
     }
 
+    func group(uuid: UUID) -> SharedGroup? {
+        var d = FetchDescriptor<SharedGroup>(predicate: #Predicate { $0.uuid == uuid })
+        d.fetchLimit = 1
+        return try? fetch(d).first
+    }
+
     func blackout(uuid: UUID) -> Blackout? {
         var d = FetchDescriptor<Blackout>(predicate: #Predicate { $0.uuid == uuid })
         d.fetchLimit = 1

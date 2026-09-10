@@ -10,6 +10,8 @@ struct EventEditorSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    @Query private var groups: [SharedGroup]
+
     @State private var title: String
     @State private var kind: Kind
     @State private var isAllDay: Bool
@@ -18,6 +20,10 @@ struct EventEditorSheet: View {
     @State private var end: Date
     @State private var location: String
     @State private var notes: String
+    /// nil = follow the kind's colour.
+    @State private var colorHex: String?
+    /// nil = personal event.
+    @State private var groupID: UUID?
     @State private var reminderMinutes: Set<Int>
     @State private var remindersEdited: Bool
     @State private var confirmDelete = false
@@ -44,6 +50,8 @@ struct EventEditorSheet: View {
         _end = State(initialValue: event?.endDate ?? defaultStart.addingTimeInterval(3600))
         _location = State(initialValue: event?.location ?? "")
         _notes = State(initialValue: event?.notes ?? "")
+        _colorHex = State(initialValue: event?.colorHex)
+        _groupID = State(initialValue: event?.groupID)
         if let event {
             _reminderMinutes = State(initialValue: Set(event.reminderOffsetsMinutes))
             _remindersEdited = State(initialValue: true)
@@ -57,6 +65,17 @@ struct EventEditorSheet: View {
     private var canSave: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
     private var dateComponents: DatePickerComponents { isAllDay ? [.date] : [.date, .hourAndMinute] }
 
+    private var selectedGroup: SharedGroup? {
+        groups.first { $0.uuid == groupID }
+    }
+
+    /// Who added this event to the group, if it's known and isn't me.
+    private var authorName: String? {
+        guard let event, let authorID = event.authorID, authorID != AuthService.shared.userID,
+              let group = selectedGroup else { return nil }
+        return group.displayName(of: authorID)
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -69,6 +88,39 @@ struct EventEditorSheet: View {
                         }
                     }
                     Toggle("All-day", isOn: $isAllDay)
+                }
+
+                if !groups.isEmpty {
+                    Section {
+                        Picker("Group", selection: $groupID) {
+                            Text("No group").tag(UUID?.none)
+                            ForEach(groups) { group in
+                                HStack {
+                                    Circle()
+                                        .fill(Color(hex: group.effectiveColorHex))
+                                        .frame(width: 10, height: 10)
+                                    Text(group.name)
+                                }
+                                .tag(Optional(group.uuid))
+                            }
+                        }
+                    } header: {
+                        Text("Group")
+                    } footer: {
+                        if let authorName {
+                            Text("Added by \(authorName)")
+                        }
+                    }
+                }
+
+                Section {
+                    ColorSwatchRow(selection: $colorHex, matching: kind)
+                } header: {
+                    Text("Color")
+                } footer: {
+                    if let selectedGroup {
+                        Text("This event uses \(selectedGroup.name)'s colour. The swatch above applies once it's taken out of the group.")
+                    }
                 }
 
                 Section {
@@ -155,11 +207,15 @@ struct EventEditorSheet: View {
             event.notes = notes
             event.reminderOffsetsMinutes = reminders
             event.isRoutine = isRoutine
+            event.colorHex = colorHex
+            event.groupID = groupID
         } else {
             let e = Event(
                 title: t, kind: kind, start: start, end: end, isAllDay: isAllDay,
-                location: location, notes: notes, reminderOffsetsMinutes: reminders, isRoutine: isRoutine
+                location: location, notes: notes, reminderOffsetsMinutes: reminders, isRoutine: isRoutine,
+                groupID: groupID
             )
+            e.colorHex = colorHex
             modelContext.insert(e)
         }
         dismiss()

@@ -54,7 +54,9 @@ public enum OccurrenceEngine {
                     end: e.end,
                     isAllDay: e.isAllDay,
                     location: e.location,
-                    isRoutine: e.isRoutine
+                    colorHex: e.colorHex,
+                    isRoutine: e.isRoutine,
+                    groupID: e.groupID
                 )
             )
         }

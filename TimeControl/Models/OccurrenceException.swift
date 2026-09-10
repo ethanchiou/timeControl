@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 import TimeControlCore
 
-extension SchemaV1 {
+extension SchemaV2 {
     /// A per-occurrence override of a series. v1 supports only `skipped`.
     @Model
     final class OccurrenceException {
@@ -10,6 +10,8 @@ extension SchemaV1 {
         var dayKey: Int = 0
         var kindRaw: String = ExceptionKind.skipped.rawValue
         var createdAt: Date = Date()
+        /// The server's `updated_at` for the state last pushed or pulled; nil = never synced.
+        var syncedAt: Date?
 
         var series: Series?
 

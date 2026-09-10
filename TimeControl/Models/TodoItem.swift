@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 import TimeControlCore
 
-extension SchemaV1 {
+extension SchemaV2 {
     /// A task. Scope: `dayKey` set → that day's list; else `weekKey` set → that week's list; else project backlog.
     @Model
     final class TodoItem {
@@ -19,6 +19,8 @@ extension SchemaV1 {
         var dueDayKey: Int?
         var sortOrder: Int = 0
         var createdAt: Date = Date()
+        /// The server's `updated_at` for the state last pushed or pulled; nil = never synced.
+        var syncedAt: Date?
 
         var project: Project?
 

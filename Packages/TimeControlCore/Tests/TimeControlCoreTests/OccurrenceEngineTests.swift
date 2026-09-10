@@ -119,4 +119,13 @@ import Testing
         #expect(occ.map { ($0.title, $0.isRoutine) } .map { "\($0.0):\($0.1)" } == ["Gym:true", "CS201:true", "Interview:false"])
         #expect(occ.filter { !$0.isRoutine }.map(\.title) == ["Interview"])
     }
+
+    @Test func anEventColourReachesItsOccurrenceAndOtherwiseFollowsTheKind() {
+        let day = DayKey(year: 2026, month: 9, day: 7)
+        let gala = EventSpec(title: "Gala", kind: .personal, start: WeekMath.instant(day: day, minute: 19 * 60, calendar: la), end: WeekMath.instant(day: day, minute: 22 * 60, calendar: la), colorHex: "#EC4899")
+        let dentist = EventSpec(title: "Dentist", kind: .appointment, start: WeekMath.instant(day: day, minute: 8 * 60, calendar: la), end: WeekMath.instant(day: day, minute: 9 * 60, calendar: la))
+        let occ = OccurrenceEngine.occurrences(in: day...day, series: [], events: [gala, dentist], calendar: la)
+        #expect(occ.first { $0.title == "Gala" }?.colorHex == "#EC4899")
+        #expect(occ.first { $0.title == "Dentist" }?.colorHex == Kind.appointment.colorHex)
+    }
 }

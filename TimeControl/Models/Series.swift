@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 import TimeControlCore
 
-extension SchemaV1 {
+extension SchemaV2 {
     /// A recurring course/meeting inside a term. Occurs in term week `w` iff
     /// `startWeek ≤ w ≤ endWeek && (w − startWeek) % intervalWeeks == 0`, on each weekday in `weekdaysMask`.
     @Model
@@ -23,6 +23,8 @@ extension SchemaV1 {
         var notes: String = ""
         var colorHex: String?
         var createdAt: Date = Date()
+        /// The server's `updated_at` for the state last pushed or pulled; nil = never synced.
+        var syncedAt: Date?
 
         var term: Term?
 

@@ -25,7 +25,10 @@ struct CalendarPager<Content: View>: View {
                 .scrollTargetBehavior(.paging)
                 .defaultScrollAnchor(.center)
                 .scrollIndicators(.hidden)
-                .onScrollPhaseChange { _, phase, context in
+                .onScrollPhaseChange { old, phase, context in
+                    // TEMP PAGER LOG (remove): diagnosing backward paging on macOS.
+                    let g = context.geometry
+                    NSLog("PAGER \(old)->\(phase) offset=\(g.contentOffset) container=\(g.containerSize) content=\(g.contentSize) insets=\(g.contentInsets) visible=\(g.visibleRect)")
                     // Commit only once the scroll has come to rest, so the snap-back never fights the
                     // deceleration still in flight. The page is read off the geometry rather than a
                     // `scrollPosition(id:)` binding: that binding reads nil once the reader has
@@ -33,8 +36,10 @@ struct CalendarPager<Content: View>: View {
                     // stuck one page out with the header still naming the page before.
                     guard phase == .idle else { return }
                     let settled = Self.settledPage(geometry: context.geometry, axis: axis)
+                    NSLog("PAGER settled=\(settled)") // TEMP PAGER LOG (remove)
                     guard settled != 0 else { return }
                     shift(settled)
+                    NSLog("PAGER shifted \(settled), recentring") // TEMP PAGER LOG (remove)
                     var transaction = Transaction()
                     transaction.disablesAnimations = true
                     withTransaction(transaction) { proxy.scrollTo(0, anchor: .center) }

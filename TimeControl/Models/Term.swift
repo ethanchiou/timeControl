@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 import TimeControlCore
 
-extension SchemaV1 {
+extension SchemaV2 {
     /// A semester. Week 1 starts on the Monday of the week containing `start`.
     @Model
     final class Term {
@@ -12,6 +12,8 @@ extension SchemaV1 {
         var endDayKey: Int = 0
         var isArchived: Bool = false
         var createdAt: Date = Date()
+        /// The server's `updated_at` for the state last pushed or pulled; nil = never synced.
+        var syncedAt: Date?
 
         @Relationship(deleteRule: .cascade, inverse: \Series.term)
         var series: [Series]?

@@ -7,6 +7,17 @@ struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
     #if !os(macOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var isPhone: Bool { UIDevice.current.userInterfaceIdiom == .phone }
+
+    /// The iPhone has no Upcoming tab: the section lives on Today's stack. Setting the section
+    /// pushes it, and popping it hands the section back to Today.
+    private var upcomingIsPushed: Binding<Bool> {
+        Binding(
+            get: { isPhone && appState.section == .upcoming },
+            set: { pushed in if !pushed, appState.section == .upcoming { appState.section = .today } }
+        )
+    }
     #endif
 
     @Query private var seriesList: [Series]
@@ -14,6 +25,7 @@ struct TodayView: View {
     @Query private var blackouts: [Blackout]
     @Query private var exceptions: [OccurrenceException]
     @Query private var todos: [TodoItem]
+    @Query private var groups: [SharedGroup]
 
     @State private var editingEvent: Event?
     @State private var isCreatingEvent = false
@@ -32,11 +44,11 @@ struct TodayView: View {
     }
 
     private var snapshot: ScheduleSnapshot {
-        ScheduleSnapshot(series: seriesList, events: events, blackouts: blackouts, exceptions: exceptions)
+        ScheduleSnapshot(series: seriesList, events: events, blackouts: blackouts, exceptions: exceptions, groups: groups)
     }
 
     private var occurrences: [Occurrence] {
-        snapshot.occurrences(on: appState.selectedDay, hidingRoutine: appState.hidesRoutine)
+        snapshot.occurrences(on: appState.selectedDay, hiding: appState.hiddenFilter)
     }
 
     private var dayTodos: [TodoItem] {
@@ -93,6 +105,9 @@ struct TodayView: View {
             .navigationBarTitleDisplayMode(.large)
             #endif
             .toolbar { toolbarContent }
+            #if !os(macOS)
+            .navigationDestination(isPresented: upcomingIsPushed) { UpcomingView() }
+            #endif
             .sheet(item: $editingEvent) { event in
                 EventEditorSheet(event: event, defaultDay: appState.selectedDay)
             }
@@ -154,8 +169,13 @@ struct TodayView: View {
             HStack {
                 Button { appState.shiftDay(by: -1) } label: { Image(systemName: "chevron.left") }
                 Spacer()
-                Button("Today") { appState.goToToday() }
-                    .buttonStyle(.bordered)
+                HStack(spacing: 8) {
+                    Button("Today") { appState.goToToday() }
+                    if isPhone {
+                        Button("Upcoming") { appState.section = .upcoming }
+                    }
+                }
+                .buttonStyle(.bordered)
                 Spacer()
                 Button { appState.shiftDay(by: 1) } label: { Image(systemName: "chevron.right") }
             }

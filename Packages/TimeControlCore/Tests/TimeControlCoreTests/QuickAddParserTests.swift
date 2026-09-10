@@ -56,6 +56,8 @@ private extension ParsedCommand {
         #expect(p("open todos")?.asNavigation == .section("todos"))
         #expect(p("show settings")?.asNavigation == .section("settings"))
         #expect(p("go terms")?.asNavigation == .section("terms"))
+        #expect(p("go upcoming")?.asNavigation == .section("upcoming"))
+        #expect(p("show agenda")?.asNavigation == .section("upcoming"))
         #expect(p("go week")?.asNavigation == .section("week"))
         #expect(p("go today")?.asNavigation == .section("today"))
         #expect(p("go to projects")?.asNavigation == .section("projects"))

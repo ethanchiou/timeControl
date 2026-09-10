@@ -16,7 +16,7 @@ enum ProjectStatus: String, CaseIterable, Codable, Sendable, Identifiable {
     }
 }
 
-extension SchemaV1 {
+extension SchemaV2 {
     /// A higher-level goal that groups todos. Progress = done/total of its todos.
     @Model
     final class Project {
@@ -32,6 +32,8 @@ extension SchemaV1 {
         var sortOrder: Int = 0
         var createdAt: Date = Date()
         var completedAt: Date?
+        /// The server's `updated_at` for the state last pushed or pulled; nil = never synced.
+        var syncedAt: Date?
 
         @Relationship(deleteRule: .nullify, inverse: \TodoItem.project)
         var todos: [TodoItem]?

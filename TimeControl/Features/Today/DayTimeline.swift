@@ -123,6 +123,10 @@ struct DayTimeline: View {
                 Circle()
                     .fill(Color(hex: occurrence.colorHex))
                     .frame(width: 6, height: 6)
+                if occurrence.isGroup {
+                    GroupGlyph(colorHex: occurrence.colorHex)
+                        .font(.caption2)
+                }
                 Text(occurrence.title)
                     .font(.subheadline.weight(.medium))
                     .lineLimit(1)
@@ -164,7 +168,12 @@ struct DayTimeline: View {
 
                 Spacer(minLength: 8)
 
-                KindBadge(kind: occurrence.kind, style: .pill)
+                HStack(spacing: 6) {
+                    if let group = group(for: occurrence) {
+                        GroupChip(name: group.name, colorHex: group.effectiveColorHex)
+                    }
+                    KindBadge(kind: occurrence.kind, style: .pill)
+                }
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
@@ -228,6 +237,16 @@ struct DayTimeline: View {
                         .foregroundStyle(.secondary)
                 }
                 KindBadge(kind: occurrence.kind, style: .pill)
+                if let group = group(for: occurrence) {
+                    HStack(spacing: 6) {
+                        GroupChip(name: group.name, colorHex: group.effectiveColorHex)
+                        if let name = authorName(for: occurrence, group: group) {
+                            Text("Added by \(name)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
 
             Divider()
@@ -250,6 +269,19 @@ struct DayTimeline: View {
                     }
                 }
         }
+    }
+
+    /// The shared group an occurrence belongs to, or nil if it isn't a group event or the group
+    /// isn't in the local store (not yet synced).
+    private func group(for occurrence: Occurrence) -> SharedGroup? {
+        guard let groupID = occurrence.groupID else { return nil }
+        return modelContext.group(uuid: groupID)
+    }
+
+    private func authorName(for occurrence: Occurrence, group: SharedGroup) -> String? {
+        guard let eventID = occurrence.eventID,
+              let event = modelContext.event(uuid: eventID), let authorID = event.authorID else { return nil }
+        return group.displayName(of: authorID)
     }
 
     @ViewBuilder

@@ -167,6 +167,30 @@ import TimeControlCore
         #expect(todos.first?.project == nil)
     }
 
+    @Test func groupEventFieldsRoundTripThroughExportAndImport() throws {
+        let store = try makeStore()
+        let groupID = UUID()
+        let authorID = UUID()
+        let event = Event(title: "Study session", kind: .other, start: .now, end: .now.addingTimeInterval(3600), groupID: groupID)
+        event.authorID = authorID
+        store.ctx.insert(event)
+        try store.ctx.save()
+
+        let doc = try BackupService.export(from: store.ctx)
+        let exported = try #require(doc.events.first { $0.id == event.uuid })
+        #expect(exported.groupID == groupID)
+        #expect(exported.authorID == authorID)
+
+        let data = try doc.encode()
+        let decoded = try BackupDocument.decode(data)
+
+        let destination = try makeStore()
+        _ = try BackupService.importDocument(decoded, into: destination.ctx, mode: .replace)
+        let imported = try #require(destination.ctx.event(uuid: event.uuid))
+        #expect(imported.groupID == groupID)
+        #expect(imported.authorID == authorID)
+    }
+
     @Test func suggestedFilenameFormat() {
         let date = DayKey(year: 2026, month: 9, day: 3).startDate()
         #expect(BackupService.suggestedFilename(now: date) == "TimeControl-2026-09-03.json")

@@ -15,13 +15,14 @@ struct MenuBarView: View {
     @Query private var blackouts: [Blackout]
     @Query private var exceptions: [OccurrenceException]
     @Query private var todos: [TodoItem]
+    @Query private var groups: [SharedGroup]
 
     @State private var newTodoTitle = ""
 
     private var today: DayKey { .today() }
 
     private var snapshot: ScheduleSnapshot {
-        ScheduleSnapshot(series: seriesList, events: events, blackouts: blackouts, exceptions: exceptions)
+        ScheduleSnapshot(series: seriesList, events: events, blackouts: blackouts, exceptions: exceptions, groups: groups)
     }
 
     private var dailyProgress: RingProgress { RingMath.daily(todos.map(\.spec), on: today) }
@@ -87,9 +88,15 @@ struct MenuBarView: View {
                 .fill(Color(hex: occurrence.colorHex))
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 2) {
-                Text(occurrence.title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 3) {
+                    if occurrence.isGroup {
+                        GroupGlyph(colorHex: occurrence.colorHex)
+                            .font(.caption2)
+                    }
+                    Text(occurrence.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                }
                 nextUpDetail(for: occurrence, now: now)
                     .font(.caption)
                     .foregroundStyle(.secondary)

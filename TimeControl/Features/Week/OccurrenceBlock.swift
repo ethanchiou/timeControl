@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 import TimeControlCore
 
@@ -65,9 +66,15 @@ struct OccurrenceBlock: View {
                 .fill(color)
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
-                Text(occurrence.title)
-                    .font(.footnote.weight(.semibold))
-                    .lineLimit(height > 40 ? 2 : 1)
+                HStack(spacing: 3) {
+                    if occurrence.isGroup {
+                        GroupGlyph(colorHex: occurrence.colorHex)
+                            .font(.caption2)
+                    }
+                    Text(occurrence.title)
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(height > 40 ? 2 : 1)
+                }
                 if !occurrence.isAllDay, height > 40 {
                     Text(timeRange)
                         .font(.caption)
@@ -154,6 +161,7 @@ struct OccurrenceDetailsCard: View {
     let perform: @MainActor (WeekAction) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         #if os(macOS)
@@ -189,6 +197,16 @@ struct OccurrenceDetailsCard: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if let group {
+                HStack(spacing: 6) {
+                    GroupChip(name: group.name, colorHex: group.effectiveColorHex)
+                    if let authorName {
+                        Text("Added by \(authorName)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
 
             Divider().padding(.vertical, 2)
 
@@ -218,5 +236,18 @@ struct OccurrenceDetailsCard: View {
     private var weekLine: String? {
         guard let weeks, let number = weeks.weekNumber(of: occurrence.day) else { return nil }
         return "Week \(number) of \(weeks.weekCount)"
+    }
+
+    /// The shared group this occurrence belongs to, or nil if it isn't a group event or the group
+    /// isn't in the local store (not yet synced).
+    private var group: SharedGroup? {
+        guard let groupID = occurrence.groupID else { return nil }
+        return modelContext.group(uuid: groupID)
+    }
+
+    private var authorName: String? {
+        guard let group, let eventID = occurrence.eventID,
+              let event = modelContext.event(uuid: eventID), let authorID = event.authorID else { return nil }
+        return group.displayName(of: authorID)
     }
 }

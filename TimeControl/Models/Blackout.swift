@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 import TimeControlCore
 
-extension SchemaV1 {
+extension SchemaV2 {
     /// Suppresses recurring occurrences of the given kinds (empty = all) over a day range.
     /// Non-destructive: deleting the blackout restores the occurrences.
     @Model
@@ -13,6 +13,8 @@ extension SchemaV1 {
         var kindsRaw: [String] = []
         var reason: String = ""
         var createdAt: Date = Date()
+        /// The server's `updated_at` for the state last pushed or pulled; nil = never synced.
+        var syncedAt: Date?
 
         /// Display grouping only; the engine works from the day range.
         var term: Term?

@@ -176,6 +176,12 @@ public struct EventDTO: Codable, Hashable, Sendable {
     public var notes: String
     public var reminderOffsetsMinutes: [Int]
     public var isRoutine: Bool
+    /// Absent in backups written before events could pick a colour; nil follows the kind.
+    public var colorHex: String?
+    /// Absent in backups written before shared groups; nil is a personal event.
+    public var groupID: UUID?
+    /// Absent in backups written before shared groups; nil for a personal event or before the first sync.
+    public var authorID: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -187,7 +193,10 @@ public struct EventDTO: Codable, Hashable, Sendable {
         location: String = "",
         notes: String = "",
         reminderOffsetsMinutes: [Int] = [],
-        isRoutine: Bool = false
+        isRoutine: Bool = false,
+        colorHex: String? = nil,
+        groupID: UUID? = nil,
+        authorID: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -199,10 +208,13 @@ public struct EventDTO: Codable, Hashable, Sendable {
         self.notes = notes
         self.reminderOffsetsMinutes = reminderOffsetsMinutes
         self.isRoutine = isRoutine
+        self.colorHex = colorHex
+        self.groupID = groupID
+        self.authorID = authorID
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, kindRaw, startDate, endDate, isAllDay, location, notes, reminderOffsetsMinutes, isRoutine
+        case id, title, kindRaw, startDate, endDate, isAllDay, location, notes, reminderOffsetsMinutes, isRoutine, colorHex, groupID, authorID
     }
 
     public init(from decoder: Decoder) throws {
@@ -217,6 +229,9 @@ public struct EventDTO: Codable, Hashable, Sendable {
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         reminderOffsetsMinutes = try c.decodeIfPresent([Int].self, forKey: .reminderOffsetsMinutes) ?? []
         isRoutine = try c.decodeIfPresent(Bool.self, forKey: .isRoutine) ?? false
+        colorHex = try c.decodeIfPresent(String.self, forKey: .colorHex)
+        groupID = try c.decodeIfPresent(UUID.self, forKey: .groupID)
+        authorID = try c.decodeIfPresent(UUID.self, forKey: .authorID)
     }
 }
 
