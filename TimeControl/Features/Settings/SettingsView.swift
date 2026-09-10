@@ -19,6 +19,8 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 generalSection
+                AccountSection()
+                GroupsSection()
                 NotificationSettingsSection()
                 CalendarMirrorSection()
                 BackupSection()
@@ -121,10 +123,16 @@ struct SettingsView: View {
                 Text("Version \(shortVersion) (\(buildNumber))")
                     .foregroundStyle(.secondary)
             }
-            Text("Local-only storage. Export a backup before reinstalling.")
+            Text(storageCaption)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var storageCaption: String {
+        AuthService.shared.isSignedIn
+            ? "Synced to your account. Backups remain a good idea."
+            : "Local-only storage. Export a backup before reinstalling."
     }
 
     private var appName: String {
