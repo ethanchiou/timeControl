@@ -63,7 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const requestCode = useCallback(async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true },
+      // The link in the email comes back to wherever this build is served from; that origin must be
+      // in the project's additional_redirect_urls (supabase/config.toml).
+      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
     })
     return { error: error?.message ?? null }
   }, [])
