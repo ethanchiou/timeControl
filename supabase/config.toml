@@ -235,11 +235,14 @@ otp_expiry = 600
 
 # Sign-in email: the template carries both {{ .Token }} (the six-digit code, expires after otp_expiry)
 # and {{ .ConfirmationURL }} (the one-tap link), so either path works from the same message.
-# If `supabase config push` rejects the template on the hosted project, configure a custom SMTP
-# provider first (Authentication → Emails → SMTP in the dashboard) and push again.
-[auth.email.template.magic_link]
-subject = "Your TimeControl sign-in code"
-content_path = "./supabase/templates/magic_link.html"
+# The hosted free tier rejects it with "Email template modification is not available for free tier
+# projects using the default email provider" (confirmed 2026-09-10), which makes every
+# `supabase config push` fail, so the block stays commented out until a custom SMTP provider is
+# configured (Authentication → Emails → SMTP in the dashboard). Then uncomment and push. Until then
+# the hosted project sends Supabase's default link-only email; the local stack can use the template.
+# [auth.email.template.magic_link]
+# subject = "Your TimeControl sign-in code"
+# content_path = "./supabase/templates/magic_link.html"
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]

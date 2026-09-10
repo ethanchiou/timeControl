@@ -88,7 +88,7 @@ struct SignInSheet: View {
                 .focused($focus, equals: .email)
                 .onSubmit { if canSendCode { sendCode() } }
         } footer: {
-            Text("We email a six-digit code and a sign-in link; both last ten minutes. There is no password to remember, and a new address becomes an account.")
+            Text("Check your email for a sign-in link or a six-digit code; both last ten minutes. There is no password to remember, and a new address becomes an account.")
         }
     }
 

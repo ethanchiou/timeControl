@@ -72,7 +72,7 @@ export function SignIn() {
                 {busy ? 'Sending' : 'Send me a code'}
               </Button>
               <p className="text-tiny text-faint">
-                No password. We mail a six digit code and a sign-in link; both last ten minutes.
+                No password. Check your email for a sign-in link or a six digit code; both last ten minutes.
               </p>
             </>
           ) : (
