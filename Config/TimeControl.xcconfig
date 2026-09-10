@@ -1,0 +1,4 @@
+// Committed base configuration for the app target. It pulls in the gitignored Supabase.xcconfig
+// when present (copy Supabase.example.xcconfig and fill it in); the `?` makes the include optional,
+// so a fresh clone builds without it and the app runs local-only with sync switched off.
+#include? "Supabase.xcconfig"

@@ -55,7 +55,8 @@ All personal tables: `id uuid pk`, `user_id uuid` (owner), `created_at`, `update
   `join_code` and `created_by` are immutable.
 - `group_members`: members see the roster; you edit or delete only your own row (colour override,
   leaving).
-- `profiles`: yours plus anyone who shares a group with you.
+- `profiles`: yours plus anyone who shares an **active** group with you. A soft-deleted group grants
+  nothing, even though its membership rows remain.
 
 ## RPCs (call with `rpc`)
 
@@ -84,4 +85,5 @@ first sign-in. OAuth providers can be added in `config.toml` later without schem
 ## Local development
 
 `supabase start` runs the stack in Docker (Postgres, Auth, Realtime, Mailpit for captured OTP
-emails at http://localhost:54324). `supabase db reset` applies the migrations from scratch.
+emails at http://localhost:56324; ports are the 563xx set in `config.toml`). `supabase db reset`
+applies the migrations from scratch.

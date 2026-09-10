@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * Development fixtures for the hosted project.
+ * Development fixtures for whichever project ~/.config/timecontrol/supabase.env points at (hosted or
+ * the local Docker stack).
  *
- * The local Docker stack is not available on this machine, so there is no local Postgres to load a
- * .sql file into. This does the same job through the REST API as a real signed-in user, which also
- * means every row it writes has to satisfy row-level security, exactly as the app does.
+ * Rather than loading a .sql file into Postgres, this writes through the REST API as a real
+ * signed-in user, which means every row it writes has to satisfy row-level security, exactly as
+ * the app does.
  *
  * Everything is keyed to fixed UUIDs, so running it twice is the same as running it once.
  *

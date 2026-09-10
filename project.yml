@@ -1,7 +1,8 @@
 name: TimeControl
 options:
   bundleIdPrefix: com.ethanchiou
-  # Config/Supabase.xcconfig is gitignored; a fresh clone still generates and builds without it.
+  # The target's base config is Config/TimeControl.xcconfig (committed), which optionally includes the
+  # gitignored Config/Supabase.xcconfig, so a fresh clone generates and builds without the secret file.
   disabledValidations: [missingConfigFiles]
   xcodeVersion: "26.3"
   deploymentTarget:
@@ -38,8 +39,8 @@ targets:
       - package: Supabase
         product: Supabase
     configFiles:
-      Debug: Config/Supabase.xcconfig
-      Release: Config/Supabase.xcconfig
+      Debug: Config/TimeControl.xcconfig
+      Release: Config/TimeControl.xcconfig
     info:
       path: TimeControl/Resources/Info.plist
       properties:
