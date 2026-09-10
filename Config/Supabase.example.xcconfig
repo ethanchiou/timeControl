@@ -1,0 +1,4 @@
+// Copy to Supabase.xcconfig (gitignored) and fill in the project's URL and publishable key.
+// A double slash starts a comment in xcconfig, hence the $() split in the URL.
+SUPABASE_URL = https:/$()/YOUR-PROJECT-REF.supabase.co
+SUPABASE_PUBLISHABLE_KEY = sb_publishable_YOUR_KEY
