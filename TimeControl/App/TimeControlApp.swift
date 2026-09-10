@@ -18,7 +18,8 @@ struct TimeControlApp: App {
             SampleData.load(into: container.mainContext)
         }
         if CommandLine.arguments.contains("--hide-routine") {
-            appState.hidesRoutine = true
+            // Every scale, so the flag holds whichever --scale follows it.
+            appState.hidesRoutineByScale = Dictionary(uniqueKeysWithValues: CalendarScale.allCases.map { ($0, true) })
         }
         if CommandLine.arguments.contains("--palette") {
             appState.isCommandPaletteShown = true

@@ -63,11 +63,22 @@ final class AppState {
     var weekStart: DayKey = DayKey.today().weekStart
     /// Day, week or month in the Week section.
     var calendarScale: CalendarScale = .week
-    /// The eye filter: hide routine items (course occurrences and events marked routine) so only one-time items show.
-    var hidesRoutine = false
+    /// The eye filter, per scale: hide routine items (course occurrences and events marked routine)
+    /// so only one-time items show. A month is mostly courses repeating, so it opens filtered; a day
+    /// and a week have the room to show everything.
+    var hidesRoutineByScale: [CalendarScale: Bool] = [.day: false, .week: false, .month: true]
     var isCommandPaletteShown = false
     /// Todos moved to today by the last rollover run; views show a subtle marker on them.
     var rolledOverTodoIDs: Set<UUID> = []
+
+    /// The eye for what is on screen: the calendar's own scale, a day everywhere else (Today shows one).
+    private var filteredScale: CalendarScale { section == .calendar ? calendarScale : .day }
+
+    /// The eye filter for the view on screen. Reading and writing it leaves the other scales alone.
+    var hidesRoutine: Bool {
+        get { hidesRoutineByScale[filteredScale] ?? false }
+        set { hidesRoutineByScale[filteredScale] = newValue }
+    }
 
     func goToToday() {
         let today = DayKey.today()
@@ -102,9 +113,16 @@ final class AppState {
         }
     }
 
+    /// Pick a scale from the picker or a menu command. The calendar opens on the current day, week
+    /// or month rather than wherever it was last left.
+    func selectScale(_ scale: CalendarScale) {
+        calendarScale = scale
+        goToToday()
+    }
+
     /// Open the calendar at a scale, from a menu command or the palette.
     func showCalendar(_ scale: CalendarScale) {
-        calendarScale = scale
+        selectScale(scale)
         section = .calendar
     }
 }

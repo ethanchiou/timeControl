@@ -111,8 +111,9 @@ struct ScalePicker: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        @Bindable var appState = appState
-        Picker("Scale", selection: $appState.calendarScale) {
+        // Not a plain binding to `calendarScale`: picking a scale also opens it on today.
+        let scale = Binding(get: { appState.calendarScale }, set: { appState.selectScale($0) })
+        return Picker("Scale", selection: scale) {
             ForEach(CalendarScale.allCases) { scale in
                 Text(scale.title).tag(scale)
             }
