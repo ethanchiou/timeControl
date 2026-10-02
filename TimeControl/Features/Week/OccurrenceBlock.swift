@@ -12,6 +12,8 @@ enum WeekAction {
     case editEvent(Occurrence)
     case hideKindThisWeek(Occurrence)
     case delete(Occurrence)
+    /// Events only: finish it or reopen it, through the member's linked todo.
+    case toggleDone(Occurrence)
 }
 
 /// One occurrence drawn in a day column. The caller sizes it; the contents adapt to the height.
@@ -67,12 +69,17 @@ struct OccurrenceBlock: View {
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 3) {
-                    if occurrence.isGroup {
+                    if occurrence.isDone {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(color)
+                    } else if occurrence.isGroup {
                         GroupGlyph(colorHex: occurrence.colorHex)
                             .font(.caption2)
                     }
                     Text(occurrence.title)
                         .font(.footnote.weight(.semibold))
+                        .strikethrough(occurrence.isDone)
                         .lineLimit(height > 40 ? 2 : 1)
                 }
                 if !occurrence.isAllDay, height > 40 {
@@ -93,7 +100,8 @@ struct OccurrenceBlock: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(color.opacity(0.18))
+        .background(color.opacity(occurrence.isDone ? 0.08 : 0.18))
+        .opacity(occurrence.isDone ? 0.65 : 1)
         .clipShape(shape)
         .contentShape(shape)
         .help(helpText)
@@ -140,6 +148,13 @@ struct OccurrenceActions: View {
                     Label("Delete \(occurrence.kind.displayName)…", systemImage: "trash")
                 }
         } else {
+            if !occurrence.isRoutine {
+                Button {
+                    perform(.toggleDone(occurrence))
+                } label: {
+                    Label(occurrence.isDone ? "Mark Not Done" : "Mark Done", systemImage: occurrence.isDone ? "circle" : "checkmark.circle")
+                }
+            }
             Button {
                 perform(.editEvent(occurrence))
             } label: {
@@ -151,6 +166,16 @@ struct OccurrenceActions: View {
                 Label("Delete Event…", systemImage: "trash")
             }
         }
+    }
+}
+
+/// The small "finished" mark beside a done event's title in list rows.
+struct DoneMark: View {
+    var body: some View {
+        Image(systemName: "checkmark.circle.fill")
+            .font(.caption)
+            .foregroundStyle(.green)
+            .accessibilityLabel("Done")
     }
 }
 
@@ -173,15 +198,22 @@ struct OccurrenceDetailsCard: View {
 
     private var card: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 5) {
-                Image(systemName: occurrence.kind.symbolName)
-                Text(occurrence.kind.displayName.uppercased())
+            // Series occurrences always carry a kind; an event's tag is optional and `.other` is none.
+            if occurrence.seriesID != nil || occurrence.kind != .other {
+                HStack(spacing: 5) {
+                    Image(systemName: occurrence.kind.symbolName)
+                    Text(occurrence.kind.displayName.uppercased())
+                }
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(Color(hex: occurrence.colorHex))
             }
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(Color(hex: occurrence.colorHex))
 
-            Text(occurrence.title)
-                .font(.headline)
+            HStack(spacing: 6) {
+                Text(occurrence.title)
+                    .font(.headline)
+                    .strikethrough(occurrence.isDone)
+                if occurrence.isDone { DoneMark() }
+            }
 
             Text(whenLine)
                 .font(.subheadline)

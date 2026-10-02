@@ -22,7 +22,7 @@ struct MenuBarView: View {
     private var today: DayKey { .today() }
 
     private var snapshot: ScheduleSnapshot {
-        ScheduleSnapshot(series: seriesList, events: events, blackouts: blackouts, exceptions: exceptions, groups: groups)
+        ScheduleSnapshot(series: seriesList, events: events, blackouts: blackouts, exceptions: exceptions, groups: groups, todos: todos)
     }
 
     private var dailyProgress: RingProgress { RingMath.daily(todos.map(\.spec), on: today) }
@@ -95,6 +95,7 @@ struct MenuBarView: View {
                     }
                     Text(occurrence.title)
                         .font(.subheadline.weight(.semibold))
+                        .strikethrough(occurrence.isDone)
                         .lineLimit(1)
                 }
                 nextUpDetail(for: occurrence, now: now)

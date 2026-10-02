@@ -1,7 +1,12 @@
-import { MapPinIcon, UsersThreeIcon } from '@phosphor-icons/react'
+import { CheckCircleIcon, MapPinIcon, UsersThreeIcon } from '@phosphor-icons/react'
 import { kindName, type Occurrence } from '@/core'
 import { hourLabel, timeRange, timeRangeCompact } from '@/lib/format'
-import { KindBadge } from './primitives'
+import { Button, KindBadge } from './primitives'
+
+/** The "finished" mark beside a done event's title. */
+export function DoneMark({ size = 12 }: { size?: number }) {
+  return <CheckCircleIcon size={size} weight="fill" aria-label="Done" className="shrink-0" style={{ color: '#10B981' }} />
+}
 
 /** The small people mark that says "this came from a group", used wherever a group item shows. */
 export function GroupMark({ size = 12 }: { size?: number }) {
@@ -23,9 +28,10 @@ export function GroupChip({ name, color }: { name: string; color: string }) {
 function describe(o: Occurrence): string {
   const where = o.location ? `, ${o.location}` : ''
   const who = o.group ? `, ${o.group.name}` : ''
+  const done = o.isDone ? ', done' : ''
   return o.isAllDay
-    ? `${o.title}, all day${where}${who}`
-    : `${o.title}, ${timeRange(o.start, o.end)}${where}${who}`
+    ? `${o.title}, all day${where}${who}${done}`
+    : `${o.title}, ${timeRange(o.start, o.end)}${where}${who}${done}`
 }
 
 /**
@@ -47,19 +53,23 @@ export function OccurrenceBlock({
       type="button"
       onClick={onOpen}
       title={describe(occurrence)}
-      className="tinted group flex h-full w-full overflow-hidden rounded text-left transition-[filter] duration-150 hover:brightness-[0.97] active:translate-y-px"
+      className={`tinted group flex h-full w-full overflow-hidden rounded text-left transition-[filter,opacity] duration-150 hover:brightness-[0.97] active:translate-y-px ${occurrence.isDone ? 'opacity-60' : ''}`}
       style={{ ['--tint' as string]: tint }}
     >
       <span className="w-[3px] shrink-0" style={{ background: tint }} />
       <span className="flex min-w-0 flex-col gap-px px-1.5 py-1">
         <span className="flex items-center gap-1">
-          {occurrence.group ? (
+          {occurrence.isDone ? (
+            <span style={{ color: tint }} className="shrink-0">
+              <CheckCircleIcon size={10} weight="fill" />
+            </span>
+          ) : occurrence.group ? (
             <span style={{ color: tint }} className="shrink-0">
               <GroupMark size={10} />
             </span>
           ) : null}
           <span
-            className="truncate text-tiny font-semibold leading-4"
+            className={`truncate text-tiny font-semibold leading-4 ${occurrence.isDone ? 'line-through' : ''}`}
             style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: height > 42 ? 2 : 1, whiteSpace: 'normal', overflow: 'hidden' }}
           >
             {occurrence.title}
@@ -96,7 +106,7 @@ export function OccurrenceRow({
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-start gap-3 border-b border-line px-3 py-2 text-left transition-colors duration-150 hover:bg-sunken"
+      className={`flex w-full items-start gap-3 border-b border-line px-3 py-2 text-left transition-colors duration-150 hover:bg-sunken ${occurrence.isDone ? 'opacity-60' : ''}`}
     >
       <span className="num w-[52px] shrink-0 pt-px text-right text-tiny text-muted">
         {occurrence.isAllDay ? 'all day' : timeRangeCompact(occurrence.start, occurrence.end).split('-')[0]}
@@ -104,7 +114,10 @@ export function OccurrenceRow({
       <span className="w-[3px] shrink-0 self-stretch rounded-full" style={{ background: tint }} />
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-base font-medium">{occurrence.title}</span>
+          <span className={`truncate text-base font-medium ${occurrence.isDone ? 'line-through' : ''}`}>
+            {occurrence.title}
+          </span>
+          {occurrence.isDone ? <DoneMark /> : null}
           {occurrence.group ? <GroupChip name={occurrence.group.name} color={tint} /> : null}
         </span>
         <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-tiny text-muted">
@@ -117,7 +130,7 @@ export function OccurrenceRow({
               {occurrence.location}
             </span>
           ) : null}
-          <span>{kindName(occurrence.kind)}</span>
+          {occurrence.kind !== 'other' ? <span>{kindName(occurrence.kind)}</span> : null}
         </span>
       </span>
     </button>
@@ -138,17 +151,21 @@ export function AllDayPill({
       type="button"
       onClick={onOpen}
       title={describe(occurrence)}
-      className="tinted flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-tiny font-medium transition-[filter] duration-150 hover:brightness-[0.97] active:translate-y-px"
+      className={`tinted flex max-w-full items-center gap-1.5 rounded-full px-2 py-0.5 text-tiny font-medium transition-[filter] duration-150 hover:brightness-[0.97] active:translate-y-px ${occurrence.isDone ? 'opacity-60' : ''}`}
       style={{ ['--tint' as string]: tint }}
     >
-      {occurrence.group ? (
+      {occurrence.isDone ? (
+        <span style={{ color: tint }}>
+          <CheckCircleIcon size={10} weight="fill" />
+        </span>
+      ) : occurrence.group ? (
         <span style={{ color: tint }}>
           <GroupMark size={10} />
         </span>
       ) : (
         <span className="h-[5px] w-[5px] shrink-0 rounded-full" style={{ background: tint }} />
       )}
-      <span className="truncate">{occurrence.title}</span>
+      <span className={`truncate ${occurrence.isDone ? 'line-through' : ''}`}>{occurrence.title}</span>
     </button>
   )
 }
@@ -167,9 +184,13 @@ export function MonthPill({
       type="button"
       onClick={onOpen}
       title={describe(occurrence)}
-      className="flex w-full items-center gap-1 rounded px-1 py-px text-left text-micro transition-colors duration-150 hover:bg-sunken"
+      className={`flex w-full items-center gap-1 rounded px-1 py-px text-left text-micro transition-colors duration-150 hover:bg-sunken ${occurrence.isDone ? 'opacity-60' : ''}`}
     >
-      {occurrence.group ? (
+      {occurrence.isDone ? (
+        <span style={{ color: tint }} className="shrink-0">
+          <CheckCircleIcon size={9} weight="fill" />
+        </span>
+      ) : occurrence.group ? (
         <span style={{ color: tint }} className="shrink-0">
           <GroupMark size={9} />
         </span>
@@ -181,25 +202,49 @@ export function MonthPill({
           {hourLabel(occurrence.start.getHours())}
         </span>
       ) : null}
-      <span className="truncate">{occurrence.title}</span>
+      <span className={`truncate ${occurrence.isDone ? 'line-through' : ''}`}>{occurrence.title}</span>
     </button>
   )
 }
 
-/** The details card behind a tap on any occurrence. */
-export function OccurrenceDetails({ occurrence }: { occurrence: Occurrence }) {
+/**
+ * The details card behind a tap on any occurrence. `onToggleDone` is offered for events that can be
+ * finished (anything not routine); a series occurrence has nothing to finish.
+ */
+export function OccurrenceDetails({
+  occurrence,
+  onToggleDone,
+}: {
+  occurrence: Occurrence
+  onToggleDone?: () => void
+}) {
+  const canFinish = occurrence.source.type === 'event' && !occurrence.isRoutine && onToggleDone
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex flex-wrap items-center gap-1.5">
-        <KindBadge kind={occurrence.kind} />
+        {occurrence.kind !== 'other' ? <KindBadge kind={occurrence.kind} /> : null}
         {occurrence.group ? (
           <GroupChip name={occurrence.group.name} color={occurrence.colorHex} />
         ) : null}
         {occurrence.isRoutine ? (
           <span className="rounded-full bg-sunken px-2 py-0.5 text-tiny text-muted">Routine</span>
         ) : null}
+        {occurrence.isDone ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-sunken px-2 py-0.5 text-tiny text-muted">
+            <DoneMark size={11} />
+            Done
+          </span>
+        ) : null}
       </div>
-      <p className="text-lg font-semibold">{occurrence.title}</p>
+      <p className={`text-lg font-semibold ${occurrence.isDone ? 'line-through text-muted' : ''}`}>
+        {occurrence.title}
+      </p>
+      {canFinish ? (
+        <Button onClick={onToggleDone} className="self-start">
+          <CheckCircleIcon size={14} weight={occurrence.isDone ? 'regular' : 'fill'} />
+          {occurrence.isDone ? 'Mark not done' : 'Mark done'}
+        </Button>
+      ) : null}
       <p className="num text-sm text-muted">
         {occurrence.isAllDay ? 'All day' : timeRange(occurrence.start, occurrence.end)}
       </p>

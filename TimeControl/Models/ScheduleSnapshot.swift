@@ -19,19 +19,35 @@ nonisolated struct OccurrenceFilter: OptionSet, Hashable, Sendable {
 /// Everything the occurrence engine needs, converted from models to specs once per render.
 /// Build it from `@Query` results in a view, or with `load(from:)` outside SwiftUI.
 ///
-/// Group events paint in their group's colour for this member (`SharedGroup.effectiveColorHex`), which is
-/// resolved here so the engine and every view see one `colorHex`.
+/// Colours are resolved here so the engine and every view see one `colorHex`: a group event paints
+/// in the member's own colour for it, else the group's colour for this member
+/// (`SharedGroup.effectiveColorHex`); anything else without a colour of its own takes the user's
+/// colour for its kind (`KindColorSettings`). Done state comes from the member's linked todo, or from
+/// the event itself when the group shares completion.
 struct ScheduleSnapshot {
     var series: [SeriesSpec]
     var events: [EventSpec]
     var blackouts: [BlackoutSpec]
     var exceptions: [ExceptionSpec]
 
-    init(series: [Series], events: [Event], blackouts: [Blackout], exceptions: [OccurrenceException], groups: [SharedGroup] = []) {
+    init(series: [Series], events: [Event], blackouts: [Blackout], exceptions: [OccurrenceException], groups: [SharedGroup] = [], todos: [TodoItem] = []) {
         let colorByGroup = Dictionary(groups.map { ($0.uuid, $0.effectiveColorHex) }, uniquingKeysWith: { first, _ in first })
-        self.series = series.compactMap(\.spec)
+        let doneByEvent = Dictionary(
+            todos.compactMap { todo in todo.eventID.map { ($0, todo.isDone) } },
+            uniquingKeysWith: { $0 || $1 }
+        )
+        self.series = series.compactMap(\.spec).map { spec in
+            var spec = spec
+            spec.colorHex = spec.colorHex ?? KindColorSettings.hex(for: spec.kind)
+            return spec
+        }
         self.events = events.map { event in
-            event.spec(groupColorHex: event.groupID.flatMap { colorByGroup[$0] })
+            var spec = event.spec(
+                groupColorHex: event.groupID.flatMap { colorByGroup[$0] },
+                isDone: event.sharedCompletion ? event.completedAt != nil : (doneByEvent[event.uuid] ?? false)
+            )
+            spec.colorHex = spec.colorHex ?? KindColorSettings.hex(for: spec.kind)
+            return spec
         }
         self.blackouts = blackouts.map(\.spec)
         self.exceptions = exceptions.filter { $0.series != nil }.map(\.spec)
@@ -45,7 +61,8 @@ struct ScheduleSnapshot {
             events: (try? context.fetch(FetchDescriptor<Event>())) ?? [],
             blackouts: (try? context.fetch(FetchDescriptor<Blackout>())) ?? [],
             exceptions: (try? context.fetch(FetchDescriptor<OccurrenceException>())) ?? [],
-            groups: (try? context.fetch(FetchDescriptor<SharedGroup>())) ?? []
+            groups: (try? context.fetch(FetchDescriptor<SharedGroup>())) ?? [],
+            todos: (try? context.fetch(FetchDescriptor<TodoItem>())) ?? []
         )
     }
 

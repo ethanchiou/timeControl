@@ -106,7 +106,7 @@ struct WeekView: View {
 
     /// Built once per body evaluation; blocks never query for themselves.
     private var snapshot: ScheduleSnapshot {
-        ScheduleSnapshot(series: allSeries, events: allEvents, blackouts: allBlackouts, exceptions: allExceptions, groups: allGroups)
+        ScheduleSnapshot(series: allSeries, events: allEvents, blackouts: allBlackouts, exceptions: allExceptions, groups: allGroups, todos: allTodos)
     }
 
     /// The span `pageOffset` pages away from the one on screen, from the scale. Compact iOS narrows
@@ -131,10 +131,11 @@ struct WeekView: View {
         }
     }
 
-    /// Tasks land on the calendar by their due date; a task with no due date does not appear.
+    /// Tasks land on the calendar by their due date; a task with no due date does not appear. A todo
+    /// tracking an event stays off: the event's own block already stands for it.
     private func todos(in span: ClosedRange<DayKey>) -> [DayKey: [TodoItem]] {
         let dated = allTodos.compactMap { todo -> (DayKey, TodoItem)? in
-            guard let due = todo.dueDay, span.contains(due) else { return nil }
+            guard !todo.isLinkedToEvent, let due = todo.dueDay, span.contains(due) else { return nil }
             return (due, todo)
         }
         return Dictionary(grouping: dated, by: \.0).mapValues { $0.map(\.1).sorted(by: TodoItem.listOrder) }
@@ -281,6 +282,9 @@ struct WeekView: View {
             present(.sheet(.blackout(term, occurrence.kind, week)))
         case .delete(let occurrence):
             present(.confirm(.delete(occurrence)))
+        case .toggleDone(let occurrence):
+            guard let id = occurrence.eventID else { return }
+            withAnimation(.snappy) { modelContext.setEventDone(id, !occurrence.isDone) }
         }
     }
 

@@ -37,11 +37,19 @@ struct TodoRow: View {
             .accessibilityLabel(todo.isDone ? "Mark not done" : "Mark done")
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(todo.title)
-                    .font(.body)
-                    .strikethrough(todo.isDone)
-                    .foregroundStyle(todo.isDone ? .secondary : .primary)
-                    .lineLimit(2)
+                HStack(spacing: 5) {
+                    if todo.isLinkedToEvent {
+                        Image(systemName: "calendar")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel("Tracks an event")
+                    }
+                    Text(todo.title)
+                        .font(.body)
+                        .strikethrough(todo.isDone)
+                        .foregroundStyle(todo.isDone ? .secondary : .primary)
+                        .lineLimit(2)
+                }
 
                 if showsDate, let dateText {
                     Text(dateText)

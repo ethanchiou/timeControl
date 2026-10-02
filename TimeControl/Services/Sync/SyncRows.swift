@@ -171,12 +171,67 @@ nonisolated struct EventRow: SyncRow {
     var reminderOffsetsMinutes: [Int]
     var isRoutine: Bool
     var colorHex: String?
+    /// One member finishing it finishes it for everyone; `completedAt`/`completedBy` record that.
+    var sharedCompletion: Bool
+    var completedAt: Date?
+    var completedBy: UUID?
     var createdAt: Date?
     var updatedAt: Date?
     var deletedAt: Date?
 
+    init(
+        id: UUID, userId: UUID, groupId: UUID?, title: String, kind: String, startAt: Date, endAt: Date, isAllDay: Bool,
+        location: String, notes: String, reminderOffsetsMinutes: [Int], isRoutine: Bool, colorHex: String?,
+        sharedCompletion: Bool = false, completedAt: Date? = nil, completedBy: UUID? = nil,
+        createdAt: Date?, updatedAt: Date?, deletedAt: Date?
+    ) {
+        self.id = id
+        self.userId = userId
+        self.groupId = groupId
+        self.title = title
+        self.kind = kind
+        self.startAt = startAt
+        self.endAt = endAt
+        self.isAllDay = isAllDay
+        self.location = location
+        self.notes = notes
+        self.reminderOffsetsMinutes = reminderOffsetsMinutes
+        self.isRoutine = isRoutine
+        self.colorHex = colorHex
+        self.sharedCompletion = sharedCompletion
+        self.completedAt = completedAt
+        self.completedBy = completedBy
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.deletedAt = deletedAt
+    }
+
     private enum CodingKeys: String, CodingKey {
-        case id, userId, groupId, title, kind, startAt, endAt, isAllDay, location, notes, reminderOffsetsMinutes, isRoutine, colorHex, createdAt, updatedAt, deletedAt
+        case id, userId, groupId, title, kind, startAt, endAt, isAllDay, location, notes, reminderOffsetsMinutes, isRoutine, colorHex, sharedCompletion, completedAt, completedBy, createdAt, updatedAt, deletedAt
+    }
+
+    /// Written out so a server that has not run the completion migration yet still decodes.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        userId = try c.decode(UUID.self, forKey: .userId)
+        groupId = try c.decodeIfPresent(UUID.self, forKey: .groupId)
+        title = try c.decode(String.self, forKey: .title)
+        kind = try c.decode(String.self, forKey: .kind)
+        startAt = try c.decode(Date.self, forKey: .startAt)
+        endAt = try c.decode(Date.self, forKey: .endAt)
+        isAllDay = try c.decode(Bool.self, forKey: .isAllDay)
+        location = try c.decode(String.self, forKey: .location)
+        notes = try c.decode(String.self, forKey: .notes)
+        reminderOffsetsMinutes = try c.decode([Int].self, forKey: .reminderOffsetsMinutes)
+        isRoutine = try c.decode(Bool.self, forKey: .isRoutine)
+        colorHex = try c.decodeIfPresent(String.self, forKey: .colorHex)
+        sharedCompletion = try c.decodeIfPresent(Bool.self, forKey: .sharedCompletion) ?? false
+        completedAt = try c.decodeIfPresent(Date.self, forKey: .completedAt)
+        completedBy = try c.decodeIfPresent(UUID.self, forKey: .completedBy)
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt)
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+        deletedAt = try c.decodeIfPresent(Date.self, forKey: .deletedAt)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -194,6 +249,9 @@ nonisolated struct EventRow: SyncRow {
         try c.encode(reminderOffsetsMinutes, forKey: .reminderOffsetsMinutes)
         try c.encode(isRoutine, forKey: .isRoutine)
         try c.encode(colorHex, forKey: .colorHex)
+        try c.encode(sharedCompletion, forKey: .sharedCompletion)
+        try c.encode(completedAt, forKey: .completedAt)
+        try c.encode(completedBy, forKey: .completedBy)
         try c.encodeIfPresent(createdAt, forKey: .createdAt)
         try c.encode(deletedAt, forKey: .deletedAt)
     }
@@ -252,12 +310,14 @@ nonisolated struct TodoItemRow: SyncRow {
     var weekKey: Int?
     var dueDayKey: Int?
     var sortOrder: Int
+    /// The event this todo tracks, if any.
+    var eventId: UUID?
     var createdAt: Date?
     var updatedAt: Date?
     var deletedAt: Date?
 
     private enum CodingKeys: String, CodingKey {
-        case id, userId, projectId, title, notes, priority, isDone, completedAt, dayKey, weekKey, dueDayKey, sortOrder, createdAt, updatedAt, deletedAt
+        case id, userId, projectId, title, notes, priority, isDone, completedAt, dayKey, weekKey, dueDayKey, sortOrder, eventId, createdAt, updatedAt, deletedAt
     }
 
     func encode(to encoder: Encoder) throws {
@@ -274,6 +334,7 @@ nonisolated struct TodoItemRow: SyncRow {
         try c.encode(weekKey, forKey: .weekKey)
         try c.encode(dueDayKey, forKey: .dueDayKey)
         try c.encode(sortOrder, forKey: .sortOrder)
+        try c.encode(eventId, forKey: .eventId)
         try c.encodeIfPresent(createdAt, forKey: .createdAt)
         try c.encode(deletedAt, forKey: .deletedAt)
     }
@@ -310,5 +371,27 @@ nonisolated struct GroupMemberRow: Codable, Sendable {
 nonisolated struct ProfileRow: Codable, Sendable, Identifiable {
     var id: UUID
     var displayName: String
+    /// `{"<kind>": "#RRGGBB"}` for the kinds this user recoloured; absent before the migration.
+    var kindColors: [String: String]?
     var updatedAt: Date?
+}
+
+/// One member's own colour for one group event (`event_member_states`). Private to the member, so a
+/// `select` returns only the signed-in user's rows. Written directly, never through the outbox.
+nonisolated struct EventMemberStateRow: Codable, Sendable {
+    var eventId: UUID
+    var userId: UUID
+    var colorHex: String?
+    var updatedAt: Date?
+
+    private enum CodingKeys: String, CodingKey {
+        case eventId, userId, colorHex, updatedAt
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(eventId, forKey: .eventId)
+        try c.encode(userId, forKey: .userId)
+        try c.encode(colorHex, forKey: .colorHex)
+    }
 }

@@ -129,11 +129,14 @@ struct DayTimeline: View {
                 }
                 Text(occurrence.title)
                     .font(.subheadline.weight(.medium))
+                    .strikethrough(occurrence.isDone)
                     .lineLimit(1)
+                if occurrence.isDone { DoneMark() }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Color(hex: occurrence.colorHex).opacity(0.12), in: Capsule())
+            .opacity(occurrence.isDone ? 0.6 : 1)
         }
     }
 
@@ -157,6 +160,7 @@ struct DayTimeline: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(occurrence.title)
                         .font(.body.weight(.semibold))
+                        .strikethrough(occurrence.isDone)
                         .lineLimit(2)
                     if !occurrence.location.isEmpty {
                         Text(occurrence.location)
@@ -169,14 +173,18 @@ struct DayTimeline: View {
                 Spacer(minLength: 8)
 
                 HStack(spacing: 6) {
+                    if occurrence.isDone { DoneMark() }
                     if let group = group(for: occurrence) {
                         GroupChip(name: group.name, colorHex: group.effectiveColorHex)
                     }
-                    KindBadge(kind: occurrence.kind, style: .pill)
+                    if occurrence.kind != .other {
+                        KindBadge(kind: occurrence.kind, style: .pill)
+                    }
                 }
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
+            .opacity(occurrence.isDone ? 0.6 : 1)
         }
     }
 
@@ -236,7 +244,9 @@ struct DayTimeline: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                KindBadge(kind: occurrence.kind, style: .pill)
+                if occurrence.kind != .other {
+                    KindBadge(kind: occurrence.kind, style: .pill)
+                }
                 if let group = group(for: occurrence) {
                     HStack(spacing: 6) {
                         GroupChip(name: group.name, colorHex: group.effectiveColorHex)
@@ -288,6 +298,12 @@ struct DayTimeline: View {
     private func actionButtons(for occurrence: Occurrence) -> some View {
         switch occurrence.source {
         case .event(let id):
+            if !occurrence.isRoutine {
+                Button(occurrence.isDone ? "Mark Not Done" : "Mark Done") {
+                    withAnimation(.snappy) { modelContext.setEventDone(id, !occurrence.isDone) }
+                    selectedOccurrence = nil
+                }
+            }
             Button("Edit Event…") {
                 if let event = modelContext.event(uuid: id) { onEditEvent(event) }
                 selectedOccurrence = nil

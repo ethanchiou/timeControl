@@ -24,6 +24,7 @@ struct UpcomingView: View {
     @Query private var blackouts: [Blackout]
     @Query private var exceptions: [OccurrenceException]
     @Query private var groups: [SharedGroup]
+    @Query private var todos: [TodoItem]
 
     @State private var editingEvent: Event?
     @State private var isCreatingEvent = false
@@ -31,7 +32,7 @@ struct UpcomingView: View {
     @State private var pendingDelete: Occurrence?
 
     private var snapshot: ScheduleSnapshot {
-        ScheduleSnapshot(series: seriesList, events: events, blackouts: blackouts, exceptions: exceptions, groups: groups)
+        ScheduleSnapshot(series: seriesList, events: events, blackouts: blackouts, exceptions: exceptions, groups: groups, todos: todos)
     }
 
     var body: some View {
@@ -192,6 +193,7 @@ struct UpcomingView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(occurrence.title)
                     .font(.body.weight(.semibold))
+                    .strikethrough(occurrence.isDone)
                     .lineLimit(2)
                 if !occurrence.location.isEmpty {
                     Text(occurrence.location)
@@ -204,13 +206,19 @@ struct UpcomingView: View {
             Spacer(minLength: 8)
 
             HStack(spacing: 6) {
+                if occurrence.isDone {
+                    DoneMark()
+                }
                 if let group = group(for: occurrence) {
                     GroupChip(name: group.name, colorHex: group.effectiveColorHex)
                 }
-                KindBadge(kind: occurrence.kind, style: .pill)
+                if occurrence.kind != .other {
+                    KindBadge(kind: occurrence.kind, style: .pill)
+                }
             }
         }
         .padding(.vertical, 2)
+        .opacity(occurrence.isDone ? 0.6 : 1)
         .contentShape(Rectangle())
         .onTapGesture { edit(occurrence) }
         .contextMenu { actions(for: occurrence) }
@@ -230,7 +238,12 @@ struct UpcomingView: View {
     @ViewBuilder
     private func actions(for occurrence: Occurrence) -> some View {
         switch occurrence.source {
-        case .event:
+        case .event(let id):
+            if !occurrence.isRoutine {
+                Button(occurrence.isDone ? "Mark Not Done" : "Mark Done") {
+                    withAnimation(.snappy) { modelContext.setEventDone(id, !occurrence.isDone) }
+                }
+            }
             Button("Edit Event…") { edit(occurrence) }
             Button("Delete Event…", role: .destructive) { pendingDelete = occurrence }
         case .series(let seriesID, let day):

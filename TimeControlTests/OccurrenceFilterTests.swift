@@ -66,7 +66,8 @@ import TimeControlCore
         let now = Date()
         let mine = Event(title: "Mine", kind: .exam, start: now, end: now.addingTimeInterval(3600))
         mine.colorHex = "#EC4899"
-        let shared = Event(title: "Shared", kind: .exam, start: now, end: now.addingTimeInterval(3600), groupID: group.uuid)
+        // Untagged: the group's colour. The event's own `colorHex` is for personal events only.
+        let shared = Event(title: "Shared", kind: .other, start: now, end: now.addingTimeInterval(3600), groupID: group.uuid)
         shared.colorHex = "#EC4899"
         store.context.insert(mine)
         store.context.insert(shared)
@@ -84,6 +85,29 @@ import TimeControlCore
 
         let hidden = snapshot.occurrences(on: DayKey(now), hiding: .group)
         #expect(hidden.map(\.title) == ["Mine"])
+    }
+
+    /// A tag is the default colour for a group event, the member's own pick beats it, and an
+    /// untagged event falls back to the group.
+    @Test func taggedGroupEventsStartOnTheTagsColourAndTheMembersPickWins() throws {
+        let store = try Store()
+        let group = SharedGroup(uuid: UUID(), name: "Study", colorHex: "#10B981", joinCode: "ABCD2345", createdBy: UUID(), role: "member")
+        store.context.insert(group)
+        let now = Date()
+        let tagged = Event(title: "Tagged", kind: .assignment, start: now, end: now.addingTimeInterval(3600), groupID: group.uuid)
+        let picked = Event(title: "Picked", kind: .assignment, start: now, end: now.addingTimeInterval(3600), groupID: group.uuid)
+        picked.myColorHex = "#6B7280"
+        store.context.insert(tagged)
+        store.context.insert(picked)
+
+        let snapshot = ScheduleSnapshot(series: [], events: [tagged, picked], blackouts: [], exceptions: [], groups: [group])
+        let byTitle = Dictionary(uniqueKeysWithValues: snapshot.occurrences(on: DayKey(now)).map { ($0.title, $0) })
+        #expect(byTitle["Tagged"]?.colorHex == KindColorSettings.hex(for: .assignment), "the tag's preset, as a course of that kind would paint")
+        #expect(byTitle["Picked"]?.colorHex == "#6B7280")
+
+        tagged.kind = .other
+        let untagged = ScheduleSnapshot(series: [], events: [tagged], blackouts: [], exceptions: [], groups: [group])
+        #expect(untagged.occurrences(on: DayKey(now)).first?.colorHex == "#10B981")
     }
 
     @Test func aGroupEventWhoseGroupIsUnknownKeepsItsOwnColour() throws {

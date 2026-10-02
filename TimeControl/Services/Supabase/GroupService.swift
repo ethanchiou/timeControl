@@ -212,6 +212,53 @@ final class GroupService {
         }
     }
 
+    // MARK: Per-event colours
+
+    /// Pulls this member's own colours for group events (`event_member_states`, private rows) onto
+    /// the events in the store. Called after every event pull, so an event always has its colour by
+    /// the time it is drawn.
+    func refreshEventColors(into context: ModelContext) async {
+        guard let client, auth.userID != nil else { return }
+        do {
+            let rows: [EventMemberStateRow] = try await client
+                .from("event_member_states")
+                .select("event_id, user_id, color_hex, updated_at")
+                .execute()
+                .value
+            let colors = Dictionary(rows.map { ($0.eventId, $0.colorHex) }, uniquingKeysWith: { first, _ in first })
+            try tracker.applyingRemote(in: context) {
+                for event in try context.fetch(FetchDescriptor<Event>()) where event.groupID != nil {
+                    let mine = colors[event.uuid] ?? nil
+                    if event.myColorHex != mine { event.myColorHex = mine }
+                }
+                try context.save()
+            }
+        } catch {
+            print("GroupService: refreshEventColors failed: \(error)")
+        }
+    }
+
+    /// This member's own colour for one group event; nil follows the group's colour. Written straight
+    /// to the server (no foreign key, so it works before the event itself has been pushed) and then
+    /// mirrored onto the event outside the outbox.
+    func setEventColor(_ hex: String?, for event: Event, in context: ModelContext) async throws {
+        guard let client else { throw GroupError.unavailable }
+        guard let userID = auth.userID else { throw GroupError.notSignedIn }
+        do {
+            let row = EventMemberStateRow(eventId: event.uuid, userId: userID, colorHex: hex, updatedAt: nil)
+            try await client
+                .from("event_member_states")
+                .upsert(row, onConflict: "event_id,user_id")
+                .execute()
+            tracker.applyingRemote(in: context) {
+                event.myColorHex = hex
+                try? context.save()
+            }
+        } catch {
+            throw GroupError.wrap(error)
+        }
+    }
+
     /// This member's own colour for the group; nil follows the group's colour.
     func setColorOverride(_ hex: String?, for group: SharedGroup, in context: ModelContext) async throws {
         guard let client else { throw GroupError.unavailable }

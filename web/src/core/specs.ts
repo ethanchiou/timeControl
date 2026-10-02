@@ -81,11 +81,18 @@ export interface EventSpec {
   isRoutine: boolean
   /** Overrides the kind's colour; null follows the kind. A group's colour wins over both. */
   colorHex: string | null
+  /** The viewer's own colour for a group event, over the group's. Null follows the group. */
+  myColorHex: string | null
   group: EventGroup | null
   /** Display name of the author. Only interesting for group events. */
   authorName: string | null
   /** True when the signed-in user wrote this event. */
   isMine: boolean
+  /** Group events: one member finishing it finishes it for everyone. */
+  sharedCompletion: boolean
+  completedAt: Date | null
+  /** Finished, as far as the viewer is concerned: their linked todo, or anyone's when shared. */
+  isDone: boolean
 }
 
 /** Suppresses recurring occurrences of the given kinds (empty = all kinds) over a day range. */
@@ -123,6 +130,8 @@ export interface TodoSpec {
   dueDay: DayKey | null
   projectId: string | null
   sortOrder: number
+  /** The event this todo tracks, when it was made for one. */
+  eventId: string | null
 }
 
 export type OccurrenceSource =
@@ -149,6 +158,8 @@ export interface Occurrence {
   group: EventGroup | null
   authorName: string | null
   isMine: boolean
+  /** Finished, as far as the viewer is concerned. Always false for a series occurrence. */
+  isDone: boolean
 }
 
 export function occurrenceKey(source: OccurrenceSource): string {

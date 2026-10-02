@@ -8,9 +8,10 @@ import {
   SunIcon,
   UsersThreeIcon,
 } from '@phosphor-icons/react'
+import { kindColorOverrides, kindDefaultColor, kindName, KINDS, type Kind } from '@/core'
 import { useAuth } from '@/data/auth'
 import { useStore } from '@/data/store'
-import { Button, ErrorNote, Field, Sheet, TextInput } from './primitives'
+import { Button, ColorSwatchRow, ErrorNote, Field, Sheet, TextInput } from './primitives'
 
 const NAV = [
   { to: '/today', label: 'Today', Icon: SunIcon },
@@ -111,16 +112,29 @@ export function Shell({ children }: { children: ReactNode }) {
 
 function ProfileSheet({ onClose }: { onClose: () => void }) {
   const { displayName, email, setDisplayName, signOut } = useAuth()
+  const { setKindColors } = useStore()
   const [name, setName] = useState(displayName)
+  const [colors, setColors] = useState<Partial<Record<Kind, string>>>(() => kindColorOverrides())
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   async function save() {
     setBusy(true)
     const { error: failure } = await setDisplayName(name)
+    const { error: colorFailure } = failure ? { error: null } : await setKindColors(colors as Record<string, string>)
     setBusy(false)
-    if (failure) setError(failure)
+    const problem = failure ?? colorFailure
+    if (problem) setError(problem)
     else onClose()
+  }
+
+  function setColor(kind: Kind, hex: string | null) {
+    setColors((prev) => {
+      const next = { ...prev }
+      if (hex === null) delete next[kind]
+      else next[kind] = hex
+      return next
+    })
   }
 
   return (
@@ -150,6 +164,23 @@ function ProfileSheet({ onClose }: { onClose: () => void }) {
         <Field label="Email">
           <TextInput value={email ?? ''} readOnly disabled />
         </Field>
+        <div className="flex flex-col gap-2">
+          <p className="text-tiny font-medium text-muted">Colours</p>
+          <p className="text-tiny text-faint">
+            What each kind looks like on your calendar, on every device. Items with a colour of their own keep it.
+          </p>
+          {KINDS.map((kind) => (
+            <div key={kind} className="flex flex-col gap-1">
+              <span className="text-tiny">{kindName(kind)}</span>
+              <ColorSwatchRow
+                value={colors[kind] ?? null}
+                onChange={(hex) => setColor(kind, hex)}
+                matchColor={kindDefaultColor(kind)}
+                matchLabel="Default colour"
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </Sheet>
   )

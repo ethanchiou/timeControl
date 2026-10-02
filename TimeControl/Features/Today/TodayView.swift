@@ -44,7 +44,7 @@ struct TodayView: View {
     }
 
     private var snapshot: ScheduleSnapshot {
-        ScheduleSnapshot(series: seriesList, events: events, blackouts: blackouts, exceptions: exceptions, groups: groups)
+        ScheduleSnapshot(series: seriesList, events: events, blackouts: blackouts, exceptions: exceptions, groups: groups, todos: todos)
     }
 
     private var occurrences: [Occurrence] {
@@ -330,10 +330,10 @@ struct TodayView: View {
                 ScheduleMenuItems(todo: todo)
             }
             Button("Edit…") { editingTodo = todo }
-            Button("Delete", role: .destructive) { modelContext.delete(todo) }
+            TodoDeleteButton(todo: todo)
         }
         .swipeActions {
-            Button("Delete", role: .destructive) { modelContext.delete(todo) }
+            TodoDeleteButton(todo: todo)
         }
     }
 

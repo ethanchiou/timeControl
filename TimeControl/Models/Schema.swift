@@ -13,8 +13,10 @@ import SwiftData
 ///
 /// v2 (2026-09): the `SharedGroup` model; `Event.groupID` and `Event.authorID`; `syncedAt` on every
 /// synced model, the server's `updated_at` for the state last pushed or pulled (nil = never synced).
+/// v2.1 (2026-10): `Event.sharedCompletion`, `completedAt`, `completedBy`, `myColorHex`;
+/// `TodoItem.eventID`. All optional or defaulted, as the lightweight migration requires.
 enum SchemaV2: VersionedSchema {
-    static var versionIdentifier: Schema.Version { Schema.Version(2, 0, 0) }
+    static var versionIdentifier: Schema.Version { Schema.Version(2, 1, 0) }
 
     static var models: [any PersistentModel.Type] {
         [Term.self, Series.self, Blackout.self, OccurrenceException.self, Event.self, Project.self, TodoItem.self, SharedGroup.self]

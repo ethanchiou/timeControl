@@ -273,7 +273,7 @@ struct TermDetailView: View {
     private func courseHeader(_ group: CourseGroup) -> some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(Color(hex: group.series.first?.colorHex ?? group.series.first?.kind.colorHex ?? Kind.course.colorHex))
+                .fill(Color(hex: group.series.first?.colorHex ?? KindColorSettings.hex(for: group.series.first?.kind ?? .course)))
                 .frame(width: 10, height: 10)
             Text(group.title).font(.headline)
             if let kind = group.series.first?.kind {

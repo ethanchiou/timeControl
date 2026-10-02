@@ -45,6 +45,8 @@ enum SampleData {
         event("Interview · Northwind Software", kind: .interview, dayOffset: 1, start: 15 * 60, minutes: 60, location: "Zoom")
         event("Dentist", kind: .appointment, dayOffset: 3, start: 8 * 60 + 30, minutes: 45, location: "Main St Dental")
         event("MATH240 Midterm", kind: .exam, dayOffset: 9, start: 9 * 60, minutes: 120, location: "Science 110")
+        event("PHIL101 essay due", kind: .assignment, dayOffset: 5, start: 23 * 60 + 59, minutes: 0)
+        event("Board games night", kind: .hangout, dayOffset: 4, start: 19 * 60, minutes: 180, location: "Sam's place")
 
         let thesis = Project(title: "Senior Thesis", summary: "Literature review and first draft by December.", priority: 1, targetDay: term.end, colorHex: "#A855F7", sortOrder: 0)
         let jobs = Project(title: "Job Hunt", summary: "Ten applications, two interviews.", priority: 2, targetDay: today + 45, colorHex: "#F59E0B", sortOrder: 1)

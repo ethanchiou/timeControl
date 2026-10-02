@@ -16,6 +16,8 @@ import type {
   TermSpec,
   TodoSpec,
 } from '@/core'
+import { setKindColorOverrides, today as todayKey } from '@/core'
+import { planLinkedTodos } from '@/lib/linkedTodos'
 import { newId, supabase } from '@/lib/supabase'
 import {
   resolveGroup,
@@ -28,6 +30,7 @@ import {
 } from '@/lib/mappers'
 import type {
   BlackoutRow,
+  EventMemberStateRow,
   EventRow,
   ExceptionRow,
   GroupMemberRow,
@@ -103,6 +106,10 @@ export interface EventDraft {
   isRoutine: boolean
   colorHex: string | null
   groupId: string | null
+  /** Group events only: the viewer's own colour for it, saved to `event_member_states`. */
+  myColorHex: string | null
+  /** Group events only: one member finishing it finishes it for everyone. */
+  sharedCompletion: boolean
 }
 
 export interface TodoDraft {
@@ -134,6 +141,10 @@ interface StoreValue {
     groupId: string,
     colorHex: string | null,
   ) => Promise<{ error: string | null }>
+  /** Finishes or reopens an event the way its linked todo would. */
+  setEventDone: (eventId: string, done: boolean) => Promise<{ error: string | null }>
+  /** The viewer's colour per kind, saved to the profile for every device. */
+  setKindColors: (colors: Record<string, string>) => Promise<{ error: string | null }>
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -148,10 +159,12 @@ const SYNCED_TABLES = [
   'blackouts',
   'occurrence_exceptions',
   'events',
+  'event_member_states',
   'projects',
   'todos',
   'groups',
   'group_members',
+  'profiles',
 ] as const
 
 /** A membership row with the embedded profile the foreign key makes available. */
@@ -164,14 +177,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const reloadTimer = useRef<number | null>(null)
 
-  const reload = useCallback(async (isRetry = false) => {
+  const reload = useCallback(async (isRetry = false, afterLinking = false) => {
     if (!userId) {
       setData(EMPTY)
       setLoading(false)
       return
     }
     // Row-level security already scopes every one of these to what the viewer may see.
-    const [terms, series, blackouts, exceptions, events, projects, todos, groups, members, profiles] =
+    const [terms, series, blackouts, exceptions, events, projects, todos, groups, members, profiles, states] =
       await Promise.all([
         supabase.from('terms').select('*').is('deleted_at', null),
         supabase.from('series').select('*').is('deleted_at', null),
@@ -182,10 +195,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         supabase.from('todos').select('*').is('deleted_at', null),
         supabase.from('groups').select('*').is('deleted_at', null),
         supabase.from('group_members').select('*, profiles(display_name)'),
-        supabase.from('profiles').select('id, display_name'),
+        supabase.from('profiles').select('id, display_name, kind_colors'),
+        supabase.from('event_member_states').select('event_id, user_id, color_hex'),
       ])
 
-    const failure = [terms, series, blackouts, exceptions, events, projects, todos, groups, members, profiles]
+    const failure = [terms, series, blackouts, exceptions, events, projects, todos, groups, members, profiles, states]
       .map((r) => r.error)
       .find(Boolean)
     if (failure) {
@@ -201,11 +215,45 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
     setError(null)
 
+    const eventRows = alive((events.data ?? []) as EventRow[])
+    const todoRows = alive((todos.data ?? []) as TodoRow[])
+
+    // Every non-routine event gets a todo per member; whoever reads first makes it. One pass of
+    // writes, then one more read: the plan is idempotent, so the second pass never writes again.
+    if (!afterLinking) {
+      const plan = await planLinkedTodos(eventRows, todoRows, userId, todayKey())
+      if (plan.upserts.length > 0 || plan.deletes.length > 0) {
+        const now = new Date().toISOString()
+        const [upserted, deleted] = await Promise.all([
+          plan.upserts.length > 0
+            ? supabase.from('todos').upsert(plan.upserts.map((u) => ({ ...u, user_id: userId })))
+            : Promise.resolve({ error: null }),
+          plan.deletes.length > 0
+            ? supabase.from('todos').update({ deleted_at: now }).in('id', plan.deletes)
+            : Promise.resolve({ error: null }),
+        ])
+        if (!upserted.error && !deleted.error) {
+          await reloadRef.current?.(isRetry, true)
+          return
+        }
+        // Writes failing (offline, say) is not a reason to hide the schedule: show what was read.
+      }
+    }
+
     const memberRows = (members.data ?? []) as MemberRowWithProfile[]
     const groupRows = alive((groups.data ?? []) as GroupRow[])
     const names = new Map<string, string>()
     for (const p of (profiles.data ?? []) as ProfileRow[]) {
       names.set(p.id, p.display_name || 'Someone')
+      if (p.id === userId) setKindColorOverrides(p.kind_colors)
+    }
+    const myColors = new Map<string, string | null>()
+    for (const row of (states.data ?? []) as EventMemberStateRow[]) {
+      myColors.set(row.event_id, row.color_hex)
+    }
+    const doneByEvent = new Map<string, boolean>()
+    for (const t of todoRows) {
+      if (t.event_id) doneByEvent.set(t.event_id, (doneByEvent.get(t.event_id) ?? false) || t.is_done)
     }
     // group_members.user_id also points at profiles, so a roster arrives with its names attached.
     for (const m of memberRows) {
@@ -269,10 +317,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       series: seriesSpecs,
       blackouts: alive((blackouts.data ?? []) as BlackoutRow[]).map(toBlackoutSpec),
       exceptions: exceptionSpecs,
-      events: alive((events.data ?? []) as EventRow[]).map((row) =>
-        toEventSpec(row, userId, groupsForEvents, names),
+      events: eventRows.map((row) =>
+        toEventSpec(
+          row,
+          userId,
+          groupsForEvents,
+          names,
+          myColors.get(row.id) ?? null,
+          doneByEvent.get(row.id) ?? false,
+        ),
       ),
-      todos: alive((todos.data ?? []) as TodoRow[]).map(toTodoSpec),
+      todos: todoRows.map(toTodoSpec),
       projects: alive((projects.data ?? []) as ProjectRow[]).map((p) => ({
         id: p.id,
         title: p.title,
@@ -283,8 +338,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setLoading(false)
   }, [userId])
 
-  // The retry above needs to call the current reload without making reload depend on itself.
-  const reloadRef = useRef<((isRetry?: boolean) => Promise<void>) | null>(null)
+  // The retry and the post-linking re-read need the current reload without making reload depend on itself.
+  const reloadRef = useRef<((isRetry?: boolean, afterLinking?: boolean) => Promise<void>) | null>(null)
   reloadRef.current = reload
 
   useEffect(() => {
@@ -333,9 +388,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         reminder_offsets_minutes: draft.reminderOffsetsMinutes,
         is_routine: draft.isRoutine,
         color_hex: draft.colorHex,
+        shared_completion: draft.groupId !== null && draft.sharedCompletion,
       })
-      if (!error) await reload()
-      return { error: error?.message ?? null }
+      if (error) return { error: error.message }
+      if (draft.groupId !== null) {
+        // The viewer's own colour is theirs alone: its own table, never the event row.
+        const { error: colorError } = await supabase
+          .from('event_member_states')
+          .upsert(
+            { event_id: draft.id, user_id: userId, color_hex: draft.myColorHex },
+            { onConflict: 'event_id,user_id' },
+          )
+        if (colorError) return { error: colorError.message }
+      }
+      await reload()
+      return { error: null }
     },
     [userId, reload],
   )
@@ -355,23 +422,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const saveTodo = useCallback(
     async (draft: TodoDraft) => {
       if (!userId) return { error: 'Not signed in.' }
+      // A linked todo's title and due day are the event's; the linker keeps them in step, so a save
+      // here leaves them alone.
+      const linked = data.todos.find((t) => t.id === draft.id)?.eventId ?? null
       const { error } = await supabase.from('todos').upsert({
         id: draft.id,
         user_id: userId,
         project_id: draft.projectId,
-        title: draft.title,
+        ...(linked ? {} : { title: draft.title, due_day_key: draft.dueDayKey }),
         notes: draft.notes,
         priority: draft.priority,
         is_done: draft.isDone,
         completed_at: draft.isDone ? new Date().toISOString() : null,
         day_key: draft.dayKey,
         week_key: draft.weekKey,
-        due_day_key: draft.dueDayKey,
       })
       if (!error) await reload()
       return { error: error?.message ?? null }
     },
-    [userId, reload],
+    [userId, data.todos, reload],
   )
 
   const setTodoDone = useCallback(
@@ -381,14 +450,56 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         todos: prev.todos.map((t) => (t.id === id ? { ...t, isDone: done } : t)),
       }))
+      const now = new Date().toISOString()
       const { error } = await supabase
         .from('todos')
-        .update({ is_done: done, completed_at: done ? new Date().toISOString() : null })
+        .update({ is_done: done, completed_at: done ? now : null })
         .eq('id', id)
+      // A todo tracking a shared-completion event finishes (or reopens) the event for everyone.
+      const eventId = data.todos.find((t) => t.id === id)?.eventId
+      const event = eventId ? data.events.find((e) => e.id === eventId) : undefined
+      if (!error && event?.sharedCompletion) {
+        await supabase
+          .from('events')
+          .update({ completed_at: done ? now : null, completed_by: done ? userId : null })
+          .eq('id', event.id)
+      }
       await reload()
       return { error: error?.message ?? null }
     },
-    [reload],
+    [userId, data.todos, data.events, reload],
+  )
+
+  const setEventDone = useCallback(
+    async (eventId: string, done: boolean) => {
+      const linked = data.todos.find((t) => t.eventId === eventId)
+      if (linked) return setTodoDone(linked.id, done)
+      const event = data.events.find((e) => e.id === eventId)
+      if (!event?.sharedCompletion) return { error: null }
+      const { error } = await supabase
+        .from('events')
+        .update({
+          completed_at: done ? new Date().toISOString() : null,
+          completed_by: done ? userId : null,
+        })
+        .eq('id', eventId)
+      if (!error) await reload()
+      return { error: error?.message ?? null }
+    },
+    [userId, data.todos, data.events, setTodoDone, reload],
+  )
+
+  const setKindColors = useCallback(
+    async (colors: Record<string, string>) => {
+      if (!userId) return { error: 'Not signed in.' }
+      const { error } = await supabase.from('profiles').update({ kind_colors: colors }).eq('id', userId)
+      if (!error) {
+        setKindColorOverrides(colors)
+        await reload()
+      }
+      return { error: error?.message ?? null }
+    },
+    [userId, reload],
   )
 
   const createGroup = useCallback(
@@ -450,6 +561,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       joinGroup,
       leaveGroup,
       setGroupColorOverride,
+      setEventDone,
+      setKindColors,
     }),
     [
       data,
@@ -464,6 +577,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       joinGroup,
       leaveGroup,
       setGroupColorOverride,
+      setEventDone,
+      setKindColors,
     ],
   )
 

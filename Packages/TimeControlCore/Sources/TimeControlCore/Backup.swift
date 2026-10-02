@@ -182,6 +182,11 @@ public struct EventDTO: Codable, Hashable, Sendable {
     public var groupID: UUID?
     /// Absent in backups written before shared groups; nil for a personal event or before the first sync.
     public var authorID: UUID?
+    /// Absent in backups written before completion: one member finishing the event finishes it for all.
+    public var sharedCompletion: Bool
+    /// When a shared-completion event was finished, and by whom. Absent in older backups.
+    public var completedAt: Date?
+    public var completedBy: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -196,7 +201,10 @@ public struct EventDTO: Codable, Hashable, Sendable {
         isRoutine: Bool = false,
         colorHex: String? = nil,
         groupID: UUID? = nil,
-        authorID: UUID? = nil
+        authorID: UUID? = nil,
+        sharedCompletion: Bool = false,
+        completedAt: Date? = nil,
+        completedBy: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -211,10 +219,13 @@ public struct EventDTO: Codable, Hashable, Sendable {
         self.colorHex = colorHex
         self.groupID = groupID
         self.authorID = authorID
+        self.sharedCompletion = sharedCompletion
+        self.completedAt = completedAt
+        self.completedBy = completedBy
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, kindRaw, startDate, endDate, isAllDay, location, notes, reminderOffsetsMinutes, isRoutine, colorHex, groupID, authorID
+        case id, title, kindRaw, startDate, endDate, isAllDay, location, notes, reminderOffsetsMinutes, isRoutine, colorHex, groupID, authorID, sharedCompletion, completedAt, completedBy
     }
 
     public init(from decoder: Decoder) throws {
@@ -232,6 +243,9 @@ public struct EventDTO: Codable, Hashable, Sendable {
         colorHex = try c.decodeIfPresent(String.self, forKey: .colorHex)
         groupID = try c.decodeIfPresent(UUID.self, forKey: .groupID)
         authorID = try c.decodeIfPresent(UUID.self, forKey: .authorID)
+        sharedCompletion = try c.decodeIfPresent(Bool.self, forKey: .sharedCompletion) ?? false
+        completedAt = try c.decodeIfPresent(Date.self, forKey: .completedAt)
+        completedBy = try c.decodeIfPresent(UUID.self, forKey: .completedBy)
     }
 }
 
@@ -309,6 +323,8 @@ public struct TodoDTO: Codable, Hashable, Sendable {
     public var sortOrder: Int
     public var createdAt: Date
     public var projectID: UUID?
+    /// The event this todo tracks, when it was created for one. Absent in older backups.
+    public var eventID: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -322,7 +338,8 @@ public struct TodoDTO: Codable, Hashable, Sendable {
         dueDayKey: Int? = nil,
         sortOrder: Int = 0,
         createdAt: Date = Date(timeIntervalSince1970: 0),
-        projectID: UUID? = nil
+        projectID: UUID? = nil,
+        eventID: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -336,10 +353,11 @@ public struct TodoDTO: Codable, Hashable, Sendable {
         self.sortOrder = sortOrder
         self.createdAt = createdAt
         self.projectID = projectID
+        self.eventID = eventID
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, notes, priority, isDone, completedAt, dayKey, weekKey, dueDayKey, sortOrder, createdAt, projectID
+        case id, title, notes, priority, isDone, completedAt, dayKey, weekKey, dueDayKey, sortOrder, createdAt, projectID, eventID
     }
 
     public init(from decoder: Decoder) throws {
@@ -356,6 +374,7 @@ public struct TodoDTO: Codable, Hashable, Sendable {
         sortOrder = try c.decodeIfPresent(Int.self, forKey: .sortOrder) ?? 0
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date(timeIntervalSince1970: 0)
         projectID = try c.decodeIfPresent(UUID.self, forKey: .projectID)
+        eventID = try c.decodeIfPresent(UUID.self, forKey: .eventID)
     }
 }
 

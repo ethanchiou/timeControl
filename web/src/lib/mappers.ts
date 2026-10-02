@@ -73,13 +73,21 @@ export function resolveGroup(
   }
 }
 
+/**
+ * `myColorHex` is the viewer's own colour for a group event; `linkedTodoDone` whether their todo for
+ * it is ticked. A shared-completion event is done when anyone finished it.
+ */
 export function toEventSpec(
   row: EventRow,
   viewerId: string,
   groupsById: ReadonlyMap<string, EventGroup>,
   displayNames: ReadonlyMap<string, string>,
+  myColorHex: string | null = null,
+  linkedTodoDone = false,
 ): EventSpec {
   const group = row.group_id ? (groupsById.get(row.group_id) ?? null) : null
+  const sharedCompletion = row.shared_completion ?? false
+  const completedAt = row.completed_at ? new Date(row.completed_at) : null
   return {
     id: row.id,
     title: row.title,
@@ -92,9 +100,13 @@ export function toEventSpec(
     reminderOffsetsMinutes: row.reminder_offsets_minutes ?? [],
     isRoutine: row.is_routine,
     colorHex: row.color_hex,
+    myColorHex: group ? myColorHex : null,
     group,
     authorName: group ? (displayNames.get(row.user_id) ?? 'Someone') : null,
     isMine: row.user_id === viewerId,
+    sharedCompletion,
+    completedAt,
+    isDone: sharedCompletion ? completedAt !== null : linkedTodoDone,
   }
 }
 
@@ -110,5 +122,6 @@ export function toTodoSpec(row: TodoRow): TodoSpec {
     dueDay: row.due_day_key,
     projectId: row.project_id,
     sortOrder: row.sort_order,
+    eventId: row.event_id ?? null,
   }
 }

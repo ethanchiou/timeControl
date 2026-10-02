@@ -19,6 +19,9 @@ extension SchemaV2 {
         var dueDayKey: Int?
         var sortOrder: Int = 0
         var createdAt: Date = Date()
+        /// The event this todo tracks, when `EventTaskLinker` made it for one. Its title and due day
+        /// follow the event; its done state is this user's completion of the event.
+        var eventID: UUID?
         /// The server's `updated_at` for the state last pushed or pulled; nil = never synced.
         var syncedAt: Date?
 
@@ -57,9 +60,16 @@ extension TodoItem {
         TodoSpec(id: uuid, isDone: isDone, priority: priority, day: day, week: week, projectID: project?.uuid)
     }
 
-    func setDone(_ done: Bool) {
+    var isLinkedToEvent: Bool { eventID != nil }
+
+    /// Ticks the todo. A todo tracking a shared-completion event also finishes (or reopens) the event
+    /// itself, so the other members see it; their own linked todos follow on their next pull.
+    @MainActor func setDone(_ done: Bool) {
         isDone = done
         completedAt = done ? Date() : nil
+        if let eventID, let event = modelContext?.event(uuid: eventID), event.sharedCompletion {
+            event.setCompleted(done, by: AuthService.shared.userID)
+        }
     }
 
     /// Move to a specific day (clears the week bucket).

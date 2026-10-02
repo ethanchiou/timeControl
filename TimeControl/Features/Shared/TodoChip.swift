@@ -60,7 +60,7 @@ struct TodoChip: View {
             }
             Button("Edit…") { onEdit(todo) }
             Divider()
-            Button("Delete", role: .destructive) { modelContext.delete(todo) }
+            TodoDeleteButton(todo: todo)
         }
     }
 

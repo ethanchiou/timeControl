@@ -65,9 +65,13 @@ function event(title: string, kind: Kind, start: Date, end: Date, extra: Partial
     reminderOffsetsMinutes: [],
     isRoutine: false,
     colorHex: null,
+    myColorHex: null,
     group: null,
     authorName: null,
     isMine: true,
+    sharedCompletion: false,
+    completedAt: null,
+    isDone: false,
     ...extra,
   }
 }
@@ -198,9 +202,9 @@ describe('routine, colour and group flags', () => {
     expect(occ.find((o) => o.title === 'Dentist')!.colorHex).toBe(kindColor('appointment'))
   })
 
-  it('paints a group event in the group colour, over the event and kind colours', () => {
+  it('paints an untagged group event in the group colour, over the event colour', () => {
     const group = { id: 'g1', name: 'Study group', colorHex: '#10B981' }
-    const shared = event('Problem set', 'course', instant(day, 600), instant(day, 660), {
+    const shared = event('Problem set', 'other', instant(day, 600), instant(day, 660), {
       group,
       colorHex: '#EC4899',
       authorName: 'Priya Raghunathan',
@@ -244,5 +248,17 @@ describe('routine, colour and group flags', () => {
     const all = occurrencesOn(day, { series: [cs], blackouts: [b] })
     expect(all).toHaveLength(1)
     expect(visible(all, { hideRoutine: false, hideGroup: false })).toHaveLength(0)
+  })
+
+  it('paints a group event in the member colour, else the tag colour, else the group colour', () => {
+    const day = d(9, 10)
+    const group = { id: 'g', name: 'Study', colorHex: '#10B981' }
+    const untagged = event('Untagged', 'other', instant(day, 600), instant(day, 660), { group })
+    const tagged = event('Tagged', 'assignment', instant(day, 600), instant(day, 660), { group })
+    const picked = event('Picked', 'assignment', instant(day, 600), instant(day, 660), { group, myColorHex: '#6B7280' })
+    const byTitle = new Map(occurrencesOn(day, { events: [untagged, tagged, picked] }).map((o) => [o.title, o]))
+    expect(byTitle.get('Untagged')?.colorHex).toBe('#10B981')
+    expect(byTitle.get('Tagged')?.colorHex).toBe(kindColor('assignment'))
+    expect(byTitle.get('Picked')?.colorHex).toBe('#6B7280')
   })
 })

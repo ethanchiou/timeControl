@@ -46,6 +46,12 @@ struct TodoEditorSheet: View {
 
     private var isEditing: Bool { todo != nil }
     private var canSave: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
+
+    /// The event this todo tracks, if any. Its title and due day are the event's, not the todo's.
+    private var linkedEvent: Event? {
+        guard let id = todo?.eventID else { return nil }
+        return modelContext.event(uuid: id)
+    }
     private var activeProjects: [Project] {
         projects.filter { $0.status != .done || $0 == project }
     }
@@ -56,10 +62,15 @@ struct TodoEditorSheet: View {
                 Section {
                     TextField("Title", text: $title, prompt: Text("What needs doing?"))
                         .onSubmit { if canSave { save() } }
+                        .disabled(linkedEvent != nil)
                     Picker("Priority", selection: $priority) {
                         ForEach(Priority.allCases) { p in
                             Label(p.title, systemImage: p.symbolName).tag(p)
                         }
+                    }
+                } footer: {
+                    if let linkedEvent {
+                        Text("Tracks the \(linkedEvent.kind.displayName.lowercased()) “\(linkedEvent.title)”. The title and due date follow the event; edit those on the event itself.")
                     }
                 }
 
@@ -80,8 +91,10 @@ struct TodoEditorSheet: View {
                         }
                     }
                     Toggle("Due date", isOn: $hasDue)
+                        .disabled(linkedEvent != nil)
                     if hasDue {
                         DatePicker("Due", selection: $dueDate, displayedComponents: .date)
+                            .disabled(linkedEvent != nil)
                     }
                 }
 
@@ -101,7 +114,17 @@ struct TodoEditorSheet: View {
 
                 if isEditing {
                     Section {
-                        Button("Delete Todo", role: .destructive) { confirmDelete = true }
+                        if let linkedEvent {
+                            if linkedEvent.isGroupEvent {
+                                Text("A group event's todo cannot be deleted on its own; delete the event from the calendar.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Button("Delete Event and Todo", role: .destructive) { confirmDelete = true }
+                            }
+                        } else {
+                            Button("Delete Todo", role: .destructive) { confirmDelete = true }
+                        }
                     }
                 }
             }
@@ -116,8 +139,10 @@ struct TodoEditorSheet: View {
                     Button(isEditing ? "Save" : "Add") { save() }.keyboardShortcut(.defaultAction).disabled(!canSave)
                 }
             }
-            .confirmationDialog("Delete this todo?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            .confirmationDialog(linkedEvent == nil ? "Delete this todo?" : "Delete this event and its todo?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
+                    // A linked todo would only come back on the next reconcile: the event goes with it.
+                    if let linkedEvent { modelContext.delete(linkedEvent) }
                     if let todo { modelContext.delete(todo) }
                     dismiss()
                 }
@@ -134,7 +159,6 @@ struct TodoEditorSheet: View {
         let t = title.trimmingCharacters(in: .whitespaces)
         let item = todo ?? TodoItem(title: t)
         if todo == nil { modelContext.insert(item) }
-        item.title = t
         item.notes = notes
         item.priority = priority.rawValue
         switch scope {
@@ -142,7 +166,11 @@ struct TodoEditorSheet: View {
         case .day: item.schedule(on: DayKey(scopeDate))
         case .week: item.schedule(inWeekOf: DayKey(scopeDate))
         }
-        item.dueDay = hasDue ? DayKey(dueDate) : nil
+        // A linked todo's title and due day are the event's; the linker keeps them in step.
+        if linkedEvent == nil {
+            item.title = t
+            item.dueDay = hasDue ? DayKey(dueDate) : nil
+        }
         item.project = project
         dismiss()
     }

@@ -30,7 +30,16 @@ concurrency, app target defaults to MainActor isolation. Pure logic lives in `Pa
 - Models map to Core spec structs (`series.spec`, `todo.spec`) before any logic runs; the engine never sees `@Model`.
 - Every section view hosts its own `NavigationStack` (the iOS `TabView` provides none).
 - Blackouts are non-destructive; deleting one restores occurrences. Exceptions are skip-only in v1.
-- `Kind` is a code enum; per-kind user settings live in `UserDefaults` (see `NotificationSettings`, `CalendarMirrorSettings`).
+- `Kind` is a code enum; per-kind user settings live in `UserDefaults` (see `NotificationSettings`, `CalendarMirrorSettings`,
+  `KindColorSettings`, which also mirrors to `profiles.kind_colors`). Add cases only; never rename a raw value.
+- Every non-routine event has one linked todo per member (`TodoItem.eventID`, id = `EventTaskLinker.todoID`), kept
+  in step by `EventTaskLinker.reconcile` after every save and pull; the todo is the member's completion record.
+  `events.shared_completion` makes any member's completion everyone's. A linked todo is never deleted alone.
+- A member's own colour for a group event is `Event.myColorHex`: local-only on the model, written straight to
+  `event_member_states` (no outbox, like `group_members.color_override_hex`), never part of `EventRow`.
+- Both clients must know every `Kind`: the web folds unknown kinds to `other` for display and would write that back.
+- On an event `Kind.other` means "no tag" (no badge). A tagged group event defaults to its tag's colour, an untagged one
+  to the group's; `Event.myColorHex` beats both. `ScheduleSnapshot` fills every nil colour from `KindColorSettings`.
 - Shared files owned by the main agent when parallelising: `App/*`, `Models/*`, `Services/Sync/*`,
   `Services/Supabase/*`, `project.yml`, `supabase/*`.
 - The group model is `SharedGroup`; never name a type `Group`, it shadows SwiftUI's and breaks every view.

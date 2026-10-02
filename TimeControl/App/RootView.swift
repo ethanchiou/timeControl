@@ -93,6 +93,7 @@ struct RootView: View {
             modelContext.undoManager = undoManager
             backUp()
             rollOver()
+            linkTodos()
             SyncService.shared.start(container: modelContext.container)
             Task { await refreshBackgroundServices(requestingAuthorization: true) }
         }
@@ -116,6 +117,9 @@ struct RootView: View {
             rollOver()
         }
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
+            // Deferred a turn: this fires inside the save that a sync pull makes with tracking off,
+            // and todos made then would never reach the outbox. By the next turn tracking is back on.
+            Task { linkTodos() }
             NotificationScheduler.shared.scheduleRefresh(using: modelContext)
             if CalendarMirrorSettings.isEnabled {
                 CalendarMirror.shared.scheduleSync(using: modelContext)
@@ -146,6 +150,12 @@ struct RootView: View {
     /// place, so the file keeps the schedule as the day actually ended.
     private func backUp() {
         AutoBackupService.runIfNeeded(in: modelContext)
+    }
+
+    /// Gives every non-routine event its todo and keeps the existing ones in step with their events.
+    /// Saves only when something changed, so the save it causes does not come back around.
+    private func linkTodos() {
+        EventTaskLinker.reconcile(in: modelContext, userID: AuthService.shared.userID)
     }
 
     /// Moves yesterday's unfinished todos onto today and marks them so the lists can flag them.

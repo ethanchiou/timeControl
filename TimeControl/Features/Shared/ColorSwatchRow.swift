@@ -25,7 +25,7 @@ struct ColorSwatchRow: View {
             HStack(spacing: 8) {
                 if let matching {
                     swatch(
-                        matching.colorHex,
+                        KindColorSettings.hex(for: matching),
                         symbol: matching.symbolName,
                         label: "Match the kind",
                         isSelected: selection == nil

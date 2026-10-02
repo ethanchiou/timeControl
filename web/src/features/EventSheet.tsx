@@ -4,6 +4,7 @@ import {
   dayKey,
   dayKeyOf,
   instant,
+  kindColor,
   kindDefaultReminderMinutes,
   kindName,
   KINDS,
@@ -55,6 +56,8 @@ interface FormState {
   notes: string
   isRoutine: boolean
   colorHex: string | null
+  myColorHex: string | null
+  sharedCompletion: boolean
   groupId: string | null
   reminders: number[]
 }
@@ -77,6 +80,8 @@ function initialState(event: EventSpec | null, defaultDay: DayKey): FormState {
       notes: '',
       isRoutine: false,
       colorHex: null,
+      myColorHex: null,
+      sharedCompletion: false,
       groupId: null,
       reminders: reminder === null ? [] : [reminder],
     }
@@ -92,6 +97,8 @@ function initialState(event: EventSpec | null, defaultDay: DayKey): FormState {
     notes: event.notes,
     isRoutine: event.isRoutine,
     colorHex: event.colorHex,
+    myColorHex: event.myColorHex,
+    sharedCompletion: event.sharedCompletion,
     groupId: event.group?.id ?? null,
     reminders: event.reminderOffsetsMinutes,
   }
@@ -134,6 +141,8 @@ export function EventSheet({
       isRoutine: form.isRoutine,
       colorHex: form.colorHex,
       groupId: form.groupId,
+      myColorHex: form.myColorHex,
+      sharedCompletion: form.sharedCompletion,
     }
   }, [event, form])
 
@@ -207,7 +216,7 @@ export function EventSheet({
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Kind">
+          <Field label="Tag">
             <Select
               value={form.kind}
               onChange={(e) => {
@@ -215,7 +224,9 @@ export function EventSheet({
                 patch({ kind })
               }}
             >
-              {KINDS.map((k) => (
+              {/* The tag is optional: `other` is "no tag" and shows no badge. */}
+              <option value="other">No tag</option>
+              {KINDS.filter((k) => k !== 'other').map((k) => (
                 <option key={k} value={k}>
                   {kindName(k)}
                 </option>
@@ -296,26 +307,60 @@ export function EventSheet({
           />
         </Field>
 
-        <Field
-          label="Colour"
-          hint={
-            groupColor
-              ? 'A group event always shows the group colour on the calendar.'
-              : 'Leave it on the kind and the colour follows if you change the kind.'
-          }
-        >
-          <ColorSwatchRow
-            value={form.colorHex}
-            onChange={(colorHex) => patch({ colorHex })}
-            matching={form.kind}
-          />
-        </Field>
+        {groupColor ? (
+          <Field
+            label="Your colour"
+            hint={
+              form.kind !== 'other'
+                ? `Only you see this. Left on the tag, it follows your colour for ${kindName(form.kind).toLowerCase()}s.`
+                : 'Only you see this. Every member picks their own; leave it on the group colour to follow the group.'
+            }
+          >
+            {/* A tagged group event starts on its tag's colour, as a course of that kind would; an untagged one on the group's. */}
+            <ColorSwatchRow
+              value={form.myColorHex}
+              onChange={(myColorHex) => patch({ myColorHex })}
+              matchColor={form.kind !== 'other' ? kindColor(form.kind) : groupColor}
+              matchLabel={form.kind !== 'other' ? 'Match the tag' : 'Match the group'}
+            />
+          </Field>
+        ) : (
+          <Field label="Colour" hint="Leave it on the kind and the colour follows if you change the kind.">
+            <ColorSwatchRow
+              value={form.colorHex}
+              onChange={(colorHex) => patch({ colorHex })}
+              matching={form.kind}
+            />
+          </Field>
+        )}
+
+        {groupColor ? (
+          <Field
+            label="Completion"
+            hint={
+              form.sharedCompletion
+                ? 'A group submission: when any member marks it done, it is done for all of you.'
+                : 'Each member marks it done for themselves, the right default when everyone has the same assignment due.'
+            }
+          >
+            <Switch
+              checked={form.sharedCompletion}
+              onChange={(sharedCompletion) => patch({ sharedCompletion })}
+              label="One completion finishes it for everyone"
+            />
+          </Field>
+        ) : null}
 
         <Switch
           checked={form.isRoutine}
           onChange={(isRoutine) => patch({ isRoutine })}
           label="Routine, hidden with courses"
         />
+        {!form.isRoutine ? (
+          <p className="-mt-1.5 text-tiny text-faint">
+            Not routine, so it also gets a todo in your task list and counts toward the day.
+          </p>
+        ) : null}
 
         <Field label="Reminders">
           <div className="flex flex-wrap gap-1.5">

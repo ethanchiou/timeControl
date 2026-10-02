@@ -13,8 +13,19 @@ import Testing
     /// as `.course` (`Kind(rawValue:) ?? .course`), so they are pinned here rather than in a comment.
     @Test func rawValuesAreStable() {
         #expect(Kind.allCases.map(\.rawValue) == [
-            "course", "tutorial", "exam", "interview", "appointment", "personal", "other",
+            "course", "tutorial", "assignment", "exam", "interview", "appointment", "hangout", "personal", "other",
         ])
+    }
+
+    /// Assignments and hangouts are the tags group events get. An assignment is due, not attended, so
+    /// its default reminder is the day before rather than the hour before.
+    @Test func assignmentAndHangoutCarryTheirOwnNamesAndReminders() {
+        #expect(Kind.assignment.displayName == "Assignment")
+        #expect(Kind.assignment.pluralName == "Assignments")
+        #expect(Kind.assignment.defaultReminderMinutes == 1440)
+        #expect(Kind.hangout.displayName == "Hangout")
+        #expect(Kind.hangout.pluralName == "Hangouts")
+        #expect(Kind.hangout.defaultReminderMinutes == 30)
     }
 
     @Test func tutorialCarriesItsOwnNameAndReminder() {

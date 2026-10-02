@@ -19,7 +19,7 @@ import { AllDayPill, OccurrenceDetails } from '@/ui/occurrence'
 import { Button, EmptyState, Ring, Sheet, SkeletonRows } from '@/ui/primitives'
 
 export function Today() {
-  const { data, loading } = useStore()
+  const { data, loading, setEventDone } = useStore()
   const [day, setDay] = useState<DayKey>(() => todayKey())
   const [filter, setFilter] = useEye('day')
   const [openOccurrence, setOpenOccurrence] = useState<Occurrence | null>(null)
@@ -136,7 +136,14 @@ export function Today() {
             )
           }
         >
-          <OccurrenceDetails occurrence={openOccurrence} />
+          <OccurrenceDetails
+            occurrence={openOccurrence}
+            onToggleDone={() => {
+              const id = openOccurrence.source.type === 'event' ? openOccurrence.source.eventId : null
+              setOpenOccurrence(null)
+              if (id) void setEventDone(id, !openOccurrence.isDone)
+            }}
+          />
         </Sheet>
       ) : null}
 

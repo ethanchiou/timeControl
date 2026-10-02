@@ -142,11 +142,11 @@ struct TodoColumn: View {
             Menu("Schedule") { ScheduleMenuItems(todo: todo) }
             Button("Edit…") { onEdit(todo) }
             Divider()
-            Button("Delete", role: .destructive) { delete(todo) }
+            TodoDeleteButton(todo: todo)
         }
         #if os(iOS)
         .swipeActions(edge: .trailing) {
-            Button("Delete", role: .destructive) { delete(todo) }
+            TodoDeleteButton(todo: todo)
         }
         #endif
     }
@@ -181,8 +181,36 @@ struct TodoColumn: View {
         isAddFocused = true
     }
 
-    private func delete(_ todo: TodoItem) {
-        withAnimation(.snappy) { modelContext.delete(todo) }
+}
+
+/// The delete action for a todo row. A todo tracking an event is only gone for good with its event
+/// (the linker would make it again), so for a personal event the button takes both, and a group
+/// event's todo offers nothing here: the event is deleted from the calendar.
+struct TodoDeleteButton: View {
+    let todo: TodoItem
+
+    @Environment(\.modelContext) private var modelContext
+
+    private var linkedEvent: Event? {
+        guard let id = todo.eventID else { return nil }
+        return modelContext.event(uuid: id)
+    }
+
+    var body: some View {
+        if let linkedEvent {
+            if !linkedEvent.isGroupEvent {
+                Button("Delete Event", role: .destructive) {
+                    withAnimation(.snappy) {
+                        modelContext.delete(linkedEvent)
+                        modelContext.delete(todo)
+                    }
+                }
+            }
+        } else {
+            Button("Delete", role: .destructive) {
+                withAnimation(.snappy) { modelContext.delete(todo) }
+            }
+        }
     }
 }
 

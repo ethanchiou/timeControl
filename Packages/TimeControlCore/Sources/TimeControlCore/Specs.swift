@@ -94,6 +94,9 @@ public struct EventSpec: Hashable, Sendable, Identifiable {
     public var colorHex: String?
     /// The shared group this event belongs to; nil for a personal event.
     public var groupID: UUID?
+    /// Whether the viewer has finished this event: their linked todo is done, or any member has
+    /// completed it when the event is shared-completion. Resolved by the app before the engine runs.
+    public var isDone: Bool
 
     public init(
         id: UUID = UUID(),
@@ -106,7 +109,8 @@ public struct EventSpec: Hashable, Sendable, Identifiable {
         reminderOffsetsMinutes: [Int] = [],
         isRoutine: Bool = false,
         colorHex: String? = nil,
-        groupID: UUID? = nil
+        groupID: UUID? = nil,
+        isDone: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -119,6 +123,7 @@ public struct EventSpec: Hashable, Sendable, Identifiable {
         self.isRoutine = isRoutine
         self.colorHex = colorHex
         self.groupID = groupID
+        self.isDone = isDone
     }
 }
 
@@ -208,8 +213,10 @@ public struct Occurrence: Hashable, Sendable, Identifiable {
     public var isRoutine: Bool
     /// The shared group a group event belongs to; nil for personal items. The eye filter can hide these too.
     public var groupID: UUID?
+    /// Finished, as far as the viewer is concerned. Always false for a series occurrence.
+    public var isDone: Bool
 
-    public init(source: Source, title: String, kind: Kind, day: DayKey, start: Date, end: Date, isAllDay: Bool = false, location: String = "", colorHex: String? = nil, suppressedBy: UUID? = nil, isRoutine: Bool = false, groupID: UUID? = nil) {
+    public init(source: Source, title: String, kind: Kind, day: DayKey, start: Date, end: Date, isAllDay: Bool = false, location: String = "", colorHex: String? = nil, suppressedBy: UUID? = nil, isRoutine: Bool = false, groupID: UUID? = nil, isDone: Bool = false) {
         self.source = source
         self.title = title
         self.kind = kind
@@ -222,6 +229,7 @@ public struct Occurrence: Hashable, Sendable, Identifiable {
         self.suppressedBy = suppressedBy
         self.isRoutine = isRoutine
         self.groupID = groupID
+        self.isDone = isDone
     }
 
     /// Stable key, shared with notification identifiers and the EventKit mirror.

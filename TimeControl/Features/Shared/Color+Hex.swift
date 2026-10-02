@@ -17,5 +17,6 @@ extension Color {
         )
     }
 
-    static func kind(_ kind: Kind) -> Color { Color(hex: kind.colorHex) }
+    /// The user's colour for the kind, else its default.
+    static func kind(_ kind: Kind) -> Color { Color(hex: KindColorSettings.hex(for: kind)) }
 }

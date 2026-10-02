@@ -792,12 +792,17 @@ private func kindNamed(_ s: String) -> Kind? {
 private let interviewWords: Set<String> = ["interview", "interviews"]
 private let examWords: Set<String> = ["exam", "exams", "midterm", "midterms", "final", "finals", "quiz", "test"]
 private let appointmentWords: Set<String> = ["dentist", "doctor", "dr", "appointment", "appt", "meeting", "haircut"]
+private let assignmentWords: Set<String> = ["assignment", "assignments", "homework", "hw", "pset", "psets", "essay", "coursework"]
+// Deliberately short: "lunch" and "coffee" are as often appointments as hangouts, so they stay `.other`.
+private let hangoutWords: Set<String> = ["hangout", "hangouts", "party", "movie", "drinks", "brunch", "picnic"]
 
 private func inferKind(from title: String) -> Kind {
     let words = Set(title.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init))
     if !words.isDisjoint(with: interviewWords) { return .interview }
     if !words.isDisjoint(with: examWords) { return .exam }
+    if !words.isDisjoint(with: assignmentWords) { return .assignment }
     if !words.isDisjoint(with: appointmentWords) { return .appointment }
+    if !words.isDisjoint(with: hangoutWords) { return .hangout }
     return .other
 }
 

@@ -354,7 +354,7 @@ struct TermWeekGrid: View {
     // MARK: Labels
 
     private func color(of series: Series) -> Color {
-        Color(hex: series.colorHex ?? series.kind.colorHex)
+        Color(hex: series.colorHex ?? KindColorSettings.hex(for: series.kind))
     }
 
     private func timeLabel(_ start: Int, _ end: Int) -> String {

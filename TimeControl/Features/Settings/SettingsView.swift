@@ -21,6 +21,7 @@ struct SettingsView: View {
                 generalSection
                 AccountSection()
                 GroupsSection()
+                KindColorSection()
                 NotificationSettingsSection()
                 CalendarMirrorSection()
                 BackupSection()

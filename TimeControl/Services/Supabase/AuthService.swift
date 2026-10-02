@@ -148,15 +148,28 @@ final class AuthService {
         do {
             let row: ProfileRow = try await client
                 .from("profiles")
-                .select("id, display_name, updated_at")
+                .select("id, display_name, kind_colors, updated_at")
                 .eq("id", value: userID.uuidString)
                 .single()
                 .execute()
                 .value
             displayName = row.displayName
+            KindColorSettings.applyRemote(row.kindColors ?? [:])
         } catch {
             print("AuthService: loadProfile failed: \(error)")
         }
+    }
+
+    /// The whole map of recoloured kinds, replacing what the profile had. `KindColorSettings` calls
+    /// this after every change so the other devices and the web pick it up.
+    func updateKindColors(_ colors: [String: String]) async throws {
+        guard let client else { throw AuthError.unavailable }
+        guard let userID else { throw AuthError.notSignedIn }
+        try await client
+            .from("profiles")
+            .update(["kind_colors": colors])
+            .eq("id", value: userID.uuidString)
+            .execute()
     }
 
     func updateDisplayName(_ name: String) async throws {

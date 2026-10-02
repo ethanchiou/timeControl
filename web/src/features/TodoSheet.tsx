@@ -29,13 +29,16 @@ export function TodoSheet({
   bucket?: { dayKey: DayKey | null; weekKey: DayKey | null }
   onClose: () => void
 }) {
-  const { data, saveTodo, deleteTodo } = useStore()
+  const { data, saveTodo, deleteTodo, deleteEvent } = useStore()
   const [title, setTitle] = useState(todo?.title ?? '')
   const [priority, setPriority] = useState(todo?.priority ?? 3)
   const [dueDay, setDueDay] = useState<DayKey | null>(todo?.dueDay ?? null)
   const [projectId, setProjectId] = useState<string | null>(todo?.projectId ?? null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  /** The event this todo tracks, if any: its title and due day are the event's. */
+  const linkedEvent = todo?.eventId ? (data.events.find((e) => e.id === todo.eventId) ?? null) : null
 
   async function save() {
     if (!title.trim() || busy) return
@@ -56,10 +59,13 @@ export function TodoSheet({
     else onClose()
   }
 
+  /** A linked todo would only come back on the next pass: a personal event goes with it. */
   async function remove() {
     if (!todo) return
     setBusy(true)
-    const { error: failure } = await deleteTodo(todo.id)
+    const { error: failure } = linkedEvent
+      ? await deleteEvent(linkedEvent.id).then((r) => (r.error ? r : deleteTodo(todo.id)))
+      : await deleteTodo(todo.id)
     setBusy(false)
     if (failure) setError(friendlyError(failure))
     else onClose()
@@ -72,10 +78,14 @@ export function TodoSheet({
       onSubmit={save}
       footer={
         <>
-          {todo ? (
+          {todo && linkedEvent?.group ? (
+            <span className="mr-auto text-tiny text-faint">
+              Tracks a group event; delete the event from the calendar.
+            </span>
+          ) : todo ? (
             <Button tone="danger" className="mr-auto" onClick={remove} disabled={busy}>
               <TrashIcon size={14} />
-              Delete
+              {linkedEvent ? 'Delete event' : 'Delete'}
             </Button>
           ) : null}
           <Button tone="quiet" onClick={onClose}>
@@ -89,12 +99,20 @@ export function TodoSheet({
     >
       <div className="flex flex-col gap-3">
         {error ? <ErrorNote>{error}</ErrorNote> : null}
-        <Field label="Title">
+        <Field
+          label="Title"
+          hint={
+            linkedEvent
+              ? `Tracks the ${linkedEvent.kind} “${linkedEvent.title}”. The title and due date follow the event.`
+              : undefined
+          }
+        >
           <TextInput
-            autoFocus
+            autoFocus={!linkedEvent}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Finish problem set 4"
+            disabled={linkedEvent !== null}
           />
         </Field>
         <div className="grid grid-cols-2 gap-3">
@@ -114,6 +132,7 @@ export function TodoSheet({
               onChange={(e) =>
                 setDueDay(e.target.value === '' ? null : parseDateInput(e.target.value))
               }
+              disabled={linkedEvent !== null}
             />
           </Field>
         </div>

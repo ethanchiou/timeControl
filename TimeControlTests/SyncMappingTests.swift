@@ -48,9 +48,56 @@ import TimeControlCore
         #expect(json["deleted_at"] is NSNull)
         #expect(json["group_id"] is NSNull)
         #expect(json["color_hex"] is NSNull)
+        #expect(json["completed_at"] is NSNull)
+        #expect(json["completed_by"] is NSNull)
+        #expect(json["shared_completion"] as? Bool == false)
         #expect(json["updated_at"] == nil, "the server stamps updated_at")
         #expect(json["is_all_day"] as? Bool == false)
         #expect(json["start_at"] is String)
+    }
+
+    @Test func completionRoundTripsAndTheMembersColourStaysLocal() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let finisher = UUID()
+        let event = Event(title: "Group report", kind: .assignment, start: now, end: now, groupID: UUID())
+        event.sharedCompletion = true
+        event.setCompleted(true, by: finisher)
+        event.myColorHex = "#EC4899"
+
+        let row = event.row(userID: userID)
+        #expect(row.sharedCompletion)
+        #expect(row.completedAt != nil)
+        #expect(row.completedBy == finisher)
+        #expect(row.kind == "assignment")
+        let data = try SupabaseCoding.encoder.encode(row)
+        let json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(json["my_color_hex"] == nil, "a member's own colour lives in event_member_states, not the event row")
+
+        let rebuilt = Event.make(from: row)
+        #expect(rebuilt.sharedCompletion)
+        #expect(rebuilt.completedBy == finisher)
+        #expect(rebuilt.myColorHex == nil)
+
+        // A row from a server that predates the completion columns still decodes.
+        let legacy = Data("""
+        {"id":"\(UUID().uuidString)","user_id":"\(userID.uuidString)","group_id":null,"title":"Old","kind":"other",
+         "start_at":"2026-09-10T10:00:00Z","end_at":"2026-09-10T11:00:00Z","is_all_day":false,"location":"","notes":"",
+         "reminder_offsets_minutes":[],"is_routine":false,"color_hex":null,"created_at":null,"updated_at":null,"deleted_at":null}
+        """.utf8)
+        let decoded = try SupabaseCoding.decoder.decode(EventRow.self, from: legacy)
+        #expect(decoded.sharedCompletion == false)
+        #expect(decoded.completedAt == nil)
+    }
+
+    @Test func linkedTodoCarriesItsEventID() throws {
+        let eventID = UUID()
+        let todo = TodoItem(title: "Problem set", day: DayKey(year: 2026, month: 10, day: 3))
+        todo.eventID = eventID
+        let row = todo.row(userID: userID)
+        #expect(row.eventId == eventID)
+        let data = try SupabaseCoding.encoder.encode(TodoItem(title: "plain").row(userID: userID))
+        let json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(json["event_id"] is NSNull, "sent explicitly so unlinking clears it on the server")
     }
 
     @Test func seriesResolvesItsTermOnApply() throws {

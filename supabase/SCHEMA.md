@@ -24,8 +24,18 @@ publishable key with row-level security doing the access control.
   to tombstone the parent.
 - **Day keys** are `int` days since 2000-01-01, Monday-first weeks (see `DayKey.swift`). Week keys
   are the Monday's day key.
-- **Kinds** are strings from the app's `Kind` enum: `course tutorial exam interview appointment
-  personal other`. Blackout `kinds` is a `text[]`; empty means every kind.
+- **Kinds** are strings from the app's `Kind` enum: `course tutorial assignment exam interview
+  appointment hangout personal other`. Blackout `kinds` is a `text[]`; empty means every kind. A
+  client that meets a kind it does not know shows it as `other` but must write the original string
+  back unchanged.
+- **Linked todos.** Every non-routine event gets one todo per member (`todos.event_id`), created by
+  whichever client sees the event first, with id `uuid5(TimeControl namespace, "<event id>|<user id>")`
+  so two devices creating it at once produce one row. The todo mirrors the event's title and takes
+  its day as `due_day_key`; its `is_done` is that member's completion of the event. Deleting the
+  event removes the todo on the next reconcile; a linked todo is never deleted on its own.
+- **Completion.** Individual by default: each member's linked todo. `events.shared_completion = true`
+  means one member finishing it finishes it for everyone: the member sets `completed_at` /
+  `completed_by` on the event, and every member's linked todo follows it on pull.
 - **Times**: `events.start_at`/`end_at` are `timestamptz`. Series use minutes since local midnight
   (`start_minute`, `end_minute`) and the local calendar resolves the instant.
 
@@ -35,16 +45,26 @@ All personal tables: `id uuid pk`, `user_id uuid` (owner), `created_at`, `update
 
 | table | columns beyond the common set |
 |---|---|
-| `profiles` | `id` = auth user id, `display_name` (defaults to the email's local part, set by trigger on sign-up) |
+| `profiles` | `id` = auth user id, `display_name` (defaults to the email's local part, set by trigger on sign-up), `kind_colors jsonb` (`{"<kind>": "#RRGGBB"}` for recoloured kinds; missing = app default) |
 | `terms` | `name`, `start_day_key`, `end_day_key`, `is_archived` |
 | `series` | `term_id → terms`, `title`, `kind`, `weekdays_mask` (bit 0 = Monday), `start_minute`, `end_minute`, `interval_weeks`, `start_week`, `end_week`, `location`, `notes`, `color_hex?` |
 | `blackouts` | `term_id? → terms`, `start_day_key`, `end_day_key`, `kinds text[]`, `reason` |
 | `occurrence_exceptions` | `series_id → series`, `day_key`, `kind` (`skipped`) |
-| `events` | `group_id? → groups`, `title`, `kind`, `start_at`, `end_at`, `is_all_day`, `location`, `notes`, `reminder_offsets_minutes int[]`, `is_routine`, `color_hex?`. `user_id` is the **author** and is immutable. |
+| `events` | `group_id? → groups`, `title`, `kind`, `start_at`, `end_at`, `is_all_day`, `location`, `notes`, `reminder_offsets_minutes int[]`, `is_routine`, `color_hex?`, `shared_completion` (default false), `completed_at?`, `completed_by?`. `user_id` is the **author** and is immutable. |
 | `projects` | `title`, `summary`, `notes`, `status` (`active paused done`), `priority` 1–4, `target_day_key?`, `color_hex`, `sort_order`, `completed_at?` |
-| `todos` | `project_id? → projects`, `title`, `notes`, `priority`, `is_done`, `completed_at?`, `day_key?`, `week_key?`, `due_day_key?`, `sort_order` |
+| `todos` | `project_id? → projects`, `event_id? → events` (the event this todo tracks), `title`, `notes`, `priority`, `is_done`, `completed_at?`, `day_key?`, `week_key?`, `due_day_key?`, `sort_order` |
 | `groups` | `name`, `color_hex`, `join_code` (8 chars, unique), `created_by`, `deleted_at` |
 | `group_members` | pk (`group_id`, `user_id`), `role` (`owner`/`member`), `color_override_hex?`, `joined_at`. `user_id` also references `profiles(id)`, so a roster with names is one query: `group_members?select=*,profiles(display_name)` |
+| `event_member_states` | pk (`event_id`, `user_id`), `color_hex?`, `updated_at`. One member's own colour for one group event; private to that member. `event_id` is not a foreign key so the row can be written before the event is pushed. Not in the outbox: clients write it directly, like `color_override_hex`. |
+
+## Colour precedence
+
+A group event paints, in order: the viewer's own colour for that event (`event_member_states`);
+then, if it is tagged (`kind` other than `other`), the viewer's colour for that kind
+(`profiles.kind_colors`, else the kind's default, exactly as a course of that kind paints); else the
+viewer's override for the group (`group_members.color_override_hex`), then the group's colour. A
+personal event paints its own `color_hex`, else the viewer's colour for its kind, else the default.
+Series follow the same personal rule. `kind = 'other'` on an event means "no tag" and shows no badge.
 
 ## Access rules (RLS)
 
@@ -57,6 +77,7 @@ All personal tables: `id uuid pk`, `user_id uuid` (owner), `created_at`, `update
   leaving).
 - `profiles`: yours plus anyone who shares an **active** group with you. A soft-deleted group grants
   nothing, even though its membership rows remain.
+- `event_member_states`: your own rows only, for everything.
 
 ## RPCs (call with `rpc`)
 
@@ -72,8 +93,8 @@ per account, enforced by trigger on every membership insert), `invalid_join_code
 
 ## Realtime
 
-All tables are in the `supabase_realtime` publication; Postgres Changes honour RLS, so a client
-subscribed to `events` only receives rows it could select. `events`, `groups` and `group_members`
+All tables (including `event_member_states`) are in the `supabase_realtime` publication; Postgres
+Changes honour RLS, so a client subscribed to `events` only receives rows it could select. `events`, `groups` and `group_members`
 have `replica identity full`.
 
 ## Auth

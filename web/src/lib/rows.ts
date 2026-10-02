@@ -3,6 +3,8 @@
 export interface ProfileRow {
   id: string
   display_name: string
+  /** `{"<kind>": "#RRGGBB"}` for the kinds this user recoloured. */
+  kind_colors?: Record<string, string> | null
 }
 
 export interface TermRow {
@@ -67,6 +69,10 @@ export interface EventRow {
   reminder_offsets_minutes: number[]
   is_routine: boolean
   color_hex: string | null
+  shared_completion: boolean
+  completed_at: string | null
+  completed_by: string | null
+  created_at?: string
   deleted_at: string | null
 }
 
@@ -92,7 +98,17 @@ export interface TodoRow {
   week_key: number | null
   due_day_key: number | null
   sort_order: number
+  /** The event this todo tracks, if any. */
+  event_id: string | null
+  created_at?: string
   deleted_at: string | null
+}
+
+/** One member's own colour for one group event. RLS returns only the viewer's rows. */
+export interface EventMemberStateRow {
+  event_id: string
+  user_id: string
+  color_hex: string | null
 }
 
 export interface GroupRow {

@@ -154,10 +154,12 @@ extension Event {
             id: uuid, userId: authorID ?? userID, groupId: groupID, title: title, kind: kindRaw,
             startAt: startDate, endAt: endDate, isAllDay: isAllDay, location: location, notes: notes,
             reminderOffsetsMinutes: reminderOffsetsMinutes, isRoutine: isRoutine, colorHex: colorHex,
+            sharedCompletion: sharedCompletion, completedAt: completedAt, completedBy: completedBy,
             createdAt: createdAt, updatedAt: nil, deletedAt: nil
         )
     }
 
+    /// `myColorHex` is not in the row: it is this member's alone and arrives from `event_member_states`.
     func apply(_ row: EventRow) {
         title = row.title
         kindRaw = row.kind
@@ -169,6 +171,9 @@ extension Event {
         reminderOffsetsMinutes = row.reminderOffsetsMinutes
         isRoutine = row.isRoutine
         colorHex = row.colorHex
+        sharedCompletion = row.sharedCompletion
+        completedAt = row.completedAt
+        completedBy = row.completedBy
         groupID = row.groupId
         authorID = row.userId
         if let created = row.createdAt { createdAt = created }
@@ -223,7 +228,7 @@ extension TodoItem {
         TodoItemRow(
             id: uuid, userId: userID, projectId: project?.uuid, title: title, notes: notes, priority: priority,
             isDone: isDone, completedAt: completedAt, dayKey: dayKey, weekKey: weekKey, dueDayKey: dueDayKey,
-            sortOrder: sortOrder, createdAt: createdAt, updatedAt: nil, deletedAt: nil
+            sortOrder: sortOrder, eventId: eventID, createdAt: createdAt, updatedAt: nil, deletedAt: nil
         )
     }
 
@@ -237,6 +242,7 @@ extension TodoItem {
         weekKey = row.weekKey
         dueDayKey = row.dueDayKey
         sortOrder = row.sortOrder
+        eventID = row.eventId
         project = row.projectId.flatMap { context.project(uuid: $0) }
         if let created = row.createdAt { createdAt = created }
         syncedAt = row.updatedAt

@@ -19,7 +19,7 @@ import { AllDayPill, OccurrenceDetails } from '@/ui/occurrence'
 import { Button, Sheet, SkeletonRows } from '@/ui/primitives'
 
 export function Week() {
-  const { data, loading } = useStore()
+  const { data, loading, setEventDone } = useStore()
   const [monday, setMonday] = useState<DayKey>(() => weekStart(todayKey()))
   const [filter, setFilter] = useEye('week')
   const [openOccurrence, setOpenOccurrence] = useState<Occurrence | null>(null)
@@ -35,7 +35,8 @@ export function Week() {
   const dueByDay = useMemo(() => {
     const map = new Map<DayKey, TodoSpec[]>()
     for (const todo of data.todos) {
-      if (todo.dueDay === null || todo.isDone) continue
+      // A todo tracking an event stays off: the event's own block already stands for it.
+      if (todo.dueDay === null || todo.isDone || todo.eventId !== null) continue
       if (todo.dueDay < monday || todo.dueDay > sunday) continue
       const bucket = map.get(todo.dueDay)
       if (bucket) bucket.push(todo)
@@ -162,7 +163,14 @@ export function Week() {
             )
           }
         >
-          <OccurrenceDetails occurrence={openOccurrence} />
+          <OccurrenceDetails
+            occurrence={openOccurrence}
+            onToggleDone={() => {
+              const id = openOccurrence.source.type === 'event' ? openOccurrence.source.eventId : null
+              setOpenOccurrence(null)
+              if (id) void setEventDone(id, !openOccurrence.isDone)
+            }}
+          />
         </Sheet>
       ) : null}
 

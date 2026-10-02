@@ -31,6 +31,7 @@ function todo(partial: Partial<TodoSpec> = {}): TodoSpec {
     dueDay: null,
     projectId: null,
     sortOrder: 0,
+    eventId: null,
     ...partial,
   }
 }

@@ -153,6 +153,10 @@ final class SyncService {
             }
             try await push(client: client, context: context, userID: userID)
             try await pullAll(client: client, context: context, userID: userID)
+            await groups.refreshEventColors(into: context)
+            // Events that arrived need their todos; tracked, so they are pushed on the pass that the
+            // save below asks for. Nothing to do on a quiet pull.
+            EventTaskLinker.reconcile(in: context, userID: userID)
             lastSyncDate = Date()
             status = .idle
         } catch {
@@ -394,7 +398,7 @@ final class SyncService {
         guard isRealtimeEnabled, let client, realtimeChannel == nil else { return }
         let channel = client.realtimeV2.channel("timecontrol-sync")
         realtimeChannel = channel
-        let tables = ["events", "groups", "group_members", "terms", "series", "blackouts", "occurrence_exceptions", "projects", "todos"]
+        let tables = ["events", "event_member_states", "groups", "group_members", "terms", "series", "blackouts", "occurrence_exceptions", "projects", "todos"]
         let streams = tables.map { channel.postgresChange(AnyAction.self, schema: "public", table: $0) }
         realtimeTasks = streams.map { stream in
             Task { [weak self] in
@@ -449,7 +453,11 @@ final class SyncService {
             for series in (try? context.fetch(FetchDescriptor<Series>())) ?? [] { series.syncedAt = nil }
             for blackout in (try? context.fetch(FetchDescriptor<Blackout>())) ?? [] { blackout.syncedAt = nil }
             for exception in (try? context.fetch(FetchDescriptor<OccurrenceException>())) ?? [] { exception.syncedAt = nil }
-            for event in (try? context.fetch(FetchDescriptor<Event>())) ?? [] { event.syncedAt = nil }
+            for event in (try? context.fetch(FetchDescriptor<Event>())) ?? [] {
+                event.syncedAt = nil
+                // The previous account's colour for a group event means nothing to this one.
+                event.myColorHex = nil
+            }
             for project in (try? context.fetch(FetchDescriptor<Project>())) ?? [] { project.syncedAt = nil }
             for todo in (try? context.fetch(FetchDescriptor<TodoItem>())) ?? [] { todo.syncedAt = nil }
             try? context.save()

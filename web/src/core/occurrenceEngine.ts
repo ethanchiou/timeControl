@@ -8,6 +8,7 @@
  */
 
 import { dayKeyOf, type DayKey } from './dayKey'
+import { kindColor } from './kind'
 import { instant } from './weekMath'
 import {
   blackoutSuppresses,
@@ -74,6 +75,7 @@ export function occurrencesIn(from: DayKey, to: DayKey, input: EngineInput): Occ
         group: null,
         authorName: null,
         isMine: true,
+        isDone: false,
       })
     }
   }
@@ -93,13 +95,17 @@ export function occurrencesIn(from: DayKey, to: DayKey, input: EngineInput): Occ
       isAllDay: e.isAllDay,
       location: e.location,
       notes: e.notes,
-      // A group's colour wins over the event's own colour and over the kind.
-      colorHex: e.group ? e.group.colorHex : occurrenceColor(e.colorHex, e.kind),
+      // A group event: the viewer's own colour for it; else its tag's colour when tagged (`other`
+      // is "no tag"), as a course of that kind paints; else the group's.
+      colorHex: e.group
+        ? (e.myColorHex ?? (e.kind !== 'other' ? kindColor(e.kind) : e.group.colorHex))
+        : occurrenceColor(e.colorHex, e.kind),
       suppressedBy: null,
       isRoutine: e.isRoutine,
       group: e.group,
       authorName: e.authorName,
       isMine: e.isMine,
+      isDone: e.isDone,
     })
   }
 

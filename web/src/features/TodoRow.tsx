@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckIcon } from '@phosphor-icons/react'
+import { CalendarBlankIcon, CheckIcon } from '@phosphor-icons/react'
 import { today as todayKey, type TodoSpec } from '@/core'
 import { relativeDayLabel } from '@/lib/format'
 import { useStore } from '@/data/store'
@@ -48,10 +48,13 @@ export function TodoRow({ todo, showDue = true }: { todo: TodoSpec; showDue?: bo
           onClick={() => setEditing(true)}
           className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
         >
-          <span
-            className={`text-base ${todo.isDone ? 'text-faint line-through' : ''}`}
-          >
-            {todo.title || 'Untitled'}
+          <span className="flex items-center gap-1.5">
+            {todo.eventId !== null ? (
+              <CalendarBlankIcon size={12} className="shrink-0 text-muted" aria-label="Tracks an event" />
+            ) : null}
+            <span className={`text-base ${todo.isDone ? 'text-faint line-through' : ''}`}>
+              {todo.title || 'Untitled'}
+            </span>
           </span>
           {(project || (showDue && todo.dueDay !== null)) && !todo.isDone ? (
             <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-tiny text-muted">

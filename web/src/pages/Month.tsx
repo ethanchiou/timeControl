@@ -24,7 +24,7 @@ import { Button, Sheet } from '@/ui/primitives'
 const PILLS_PER_DAY = 3
 
 export function Month() {
-  const { data } = useStore()
+  const { data, setEventDone } = useStore()
   const [anchor, setAnchor] = useState<DayKey>(() => todayKey())
   const [filter, setFilter] = useEye('month')
   const [openOccurrence, setOpenOccurrence] = useState<Occurrence | null>(null)
@@ -157,7 +157,14 @@ export function Month() {
             )
           }
         >
-          <OccurrenceDetails occurrence={openOccurrence} />
+          <OccurrenceDetails
+            occurrence={openOccurrence}
+            onToggleDone={() => {
+              const id = openOccurrence.source.type === 'event' ? openOccurrence.source.eventId : null
+              setOpenOccurrence(null)
+              if (id) void setEventDone(id, !openOccurrence.isDone)
+            }}
+          />
         </Sheet>
       ) : null}
 

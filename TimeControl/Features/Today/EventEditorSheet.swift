@@ -22,6 +22,10 @@ struct EventEditorSheet: View {
     @State private var notes: String
     /// nil = follow the kind's colour.
     @State private var colorHex: String?
+    /// Group events: this member's own colour for the event; nil = follow the group's colour.
+    @State private var myColorHex: String?
+    /// Group events: one member finishing it finishes it for everyone.
+    @State private var sharedCompletion: Bool
     /// nil = personal event.
     @State private var groupID: UUID?
     @State private var reminderMinutes: Set<Int>
@@ -51,6 +55,8 @@ struct EventEditorSheet: View {
         _location = State(initialValue: event?.location ?? "")
         _notes = State(initialValue: event?.notes ?? "")
         _colorHex = State(initialValue: event?.colorHex)
+        _myColorHex = State(initialValue: event?.myColorHex)
+        _sharedCompletion = State(initialValue: event?.sharedCompletion ?? false)
         _groupID = State(initialValue: event?.groupID)
         if let event {
             _reminderMinutes = State(initialValue: Set(event.reminderOffsetsMinutes))
@@ -82,8 +88,10 @@ struct EventEditorSheet: View {
                 Section {
                     TextField("Title", text: $title, prompt: Text("Interview, exam, appointment…"))
                         .onSubmit { if canSave { save() } }
-                    Picker("Kind", selection: $kind) {
-                        ForEach(Kind.allCases) { k in
+                    // The tag is optional: `.other` is "no tag" and shows no badge.
+                    Picker("Tag", selection: $kind) {
+                        Label("No tag", systemImage: "tag.slash").tag(Kind.other)
+                        ForEach(Kind.allCases.filter { $0 != .other }) { k in
                             Label(k.displayName, systemImage: k.symbolName).tag(k)
                         }
                     }
@@ -114,19 +122,45 @@ struct EventEditorSheet: View {
                 }
 
                 Section {
-                    ColorSwatchRow(selection: $colorHex, matching: kind)
+                    if let selectedGroup {
+                        // A tagged group event starts on its tag's colour (your preset for that kind, as
+                        // courses do); an untagged one on the group's. Either way the pick is yours alone.
+                        ColorSwatchRow(
+                            selection: $myColorHex,
+                            matching: nil,
+                            inherited: kind != .other
+                                ? (hex: KindColorSettings.hex(for: kind), symbol: kind.symbolName, label: "Match the tag")
+                                : (hex: selectedGroup.effectiveColorHex, symbol: "person.2.fill", label: "Match the group")
+                        )
+                    } else {
+                        ColorSwatchRow(selection: $colorHex, matching: kind)
+                    }
                 } header: {
                     Text("Color")
                 } footer: {
-                    if let selectedGroup {
-                        Text("This event uses \(selectedGroup.name)'s colour. The swatch above applies once it's taken out of the group.")
+                    if selectedGroup != nil {
+                        Text(kind != .other
+                            ? "Only you see this colour. Left on the tag, it follows your colour for \(kind.pluralName.lowercased()) in Settings."
+                            : "Only you see this colour. Every member picks their own; leave it on the group's colour to follow whatever the group uses.")
+                    }
+                }
+
+                if selectedGroup != nil {
+                    Section {
+                        Toggle("One completion finishes it for everyone", isOn: $sharedCompletion)
+                    } header: {
+                        Text("Completion")
+                    } footer: {
+                        Text(sharedCompletion
+                            ? "A group submission: when any member marks it done, it is done for all of you."
+                            : "Each member marks it done for themselves — the right default when everyone has the same assignment due.")
                     }
                 }
 
                 Section {
                     Toggle("Routine", isOn: $isRoutine)
                 } footer: {
-                    Text("Routine items (gym, club, standing meetings) are hidden together with courses when the eye filter is on, so only one-time items show.")
+                    Text("Routine items (gym, club, standing meetings) are hidden together with courses when the eye filter is on, so only one-time items show. Anything that is not routine also gets a todo in your task list, so it counts toward the day's ring.")
                 }
 
                 Section {
@@ -197,6 +231,7 @@ struct EventEditorSheet: View {
     private func save() {
         let t = title.trimmingCharacters(in: .whitespaces)
         let reminders = Self.reminderOptions.map(\.minutes).filter { reminderMinutes.contains($0) }
+        let saved: Event
         if let event {
             event.title = t
             event.kind = kind
@@ -209,6 +244,7 @@ struct EventEditorSheet: View {
             event.isRoutine = isRoutine
             event.colorHex = colorHex
             event.groupID = groupID
+            saved = event
         } else {
             let e = Event(
                 title: t, kind: kind, start: start, end: end, isAllDay: isAllDay,
@@ -217,6 +253,15 @@ struct EventEditorSheet: View {
             )
             e.colorHex = colorHex
             modelContext.insert(e)
+            saved = e
+        }
+        saved.sharedCompletion = groupID != nil && sharedCompletion
+        if groupID != nil, saved.myColorHex != myColorHex {
+            // The member's own colour is not part of the event row: shown at once, saved to its own
+            // table, and left out of the outbox.
+            let context = modelContext
+            SyncTracker.shared.applyingRemote(in: context) { saved.myColorHex = myColorHex }
+            Task { try? await GroupService.shared.setEventColor(myColorHex, for: saved, in: context) }
         }
         dismiss()
     }

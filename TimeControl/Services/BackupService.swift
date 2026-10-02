@@ -67,7 +67,10 @@ enum BackupService {
                 isRoutine: event.isRoutine,
                 colorHex: event.colorHex,
                 groupID: event.groupID,
-                authorID: event.authorID
+                authorID: event.authorID,
+                sharedCompletion: event.sharedCompletion,
+                completedAt: event.completedAt,
+                completedBy: event.completedBy
             )
         }
         let projects = try context.fetch(FetchDescriptor<Project>()).map { project in
@@ -98,7 +101,8 @@ enum BackupService {
                 dueDayKey: todo.dueDayKey,
                 sortOrder: todo.sortOrder,
                 createdAt: todo.createdAt,
-                projectID: todo.project?.uuid
+                projectID: todo.project?.uuid,
+                eventID: todo.eventID
             )
         }
         return BackupDocument(terms: terms, series: series, blackouts: blackouts, exceptions: exceptions, events: events, projects: projects, todos: todos)
@@ -191,6 +195,9 @@ enum BackupService {
             event.uuid = dto.id
             event.colorHex = dto.colorHex
             event.authorID = dto.authorID
+            event.sharedCompletion = dto.sharedCompletion
+            event.completedAt = dto.completedAt
+            event.completedBy = dto.completedBy
             context.insert(event)
         }
 
@@ -216,6 +223,7 @@ enum BackupService {
             todo.weekKey = dto.weekKey
             todo.dueDayKey = dto.dueDayKey
             todo.createdAt = dto.createdAt
+            todo.eventID = dto.eventID
             todo.project = dto.projectID.flatMap { projectsByID[$0] }
             context.insert(todo)
         }
@@ -345,6 +353,9 @@ enum BackupService {
                 event.colorHex = dto.colorHex
                 event.groupID = dto.groupID
                 event.authorID = dto.authorID
+                event.sharedCompletion = dto.sharedCompletion
+                event.completedAt = dto.completedAt
+                event.completedBy = dto.completedBy
                 updated += 1
             } else {
                 let event = Event(
@@ -362,6 +373,9 @@ enum BackupService {
                 event.uuid = dto.id
                 event.colorHex = dto.colorHex
                 event.authorID = dto.authorID
+                event.sharedCompletion = dto.sharedCompletion
+                event.completedAt = dto.completedAt
+                event.completedBy = dto.completedBy
                 context.insert(event)
                 inserted += 1
             }
@@ -409,6 +423,7 @@ enum BackupService {
                 todo.weekKey = dto.weekKey
                 todo.dueDayKey = dto.dueDayKey
                 todo.sortOrder = dto.sortOrder
+                todo.eventID = dto.eventID
                 todo.project = project
                 updated += 1
             } else {
@@ -420,6 +435,7 @@ enum BackupService {
                 todo.weekKey = dto.weekKey
                 todo.dueDayKey = dto.dueDayKey
                 todo.createdAt = dto.createdAt
+                todo.eventID = dto.eventID
                 todo.project = project
                 context.insert(todo)
                 inserted += 1
