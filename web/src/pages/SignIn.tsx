@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArrowLeftIcon } from '@phosphor-icons/react'
 import { useAuth } from '@/data/auth'
+import { signInLinkError } from '@/lib/supabase'
 import { Button, ErrorNote, Field, TextInput } from '@/ui/primitives'
 
 export function SignIn() {
@@ -8,7 +9,8 @@ export function SignIn() {
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  // A sign-in link that came back refused says so here, since nothing else would report it.
+  const [error, setError] = useState<string | null>(signInLinkError)
   const [note, setNote] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 

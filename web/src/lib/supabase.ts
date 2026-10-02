@@ -15,9 +15,48 @@ export const supabase = createClient(url, key, {
     autoRefreshToken: true,
     // A magic link drops the session in the URL fragment, so let the client pick it up.
     detectSessionInUrl: true,
-    flowType: 'pkce',
+    // Implicit, not PKCE: a mail app opens the link in whatever browser it likes, usually not the
+    // one that asked for it. PKCE leaves its code verifier in the requesting browser's storage, so
+    // anywhere else the `?code=` callback finds no verifier and is silently treated as an ordinary
+    // page load (the first-link-never-works bug). The implicit flow carries the session itself in
+    // the fragment, so any browser can finish the sign-in, and the client clears the fragment.
+    flowType: 'implicit',
   },
 })
+
+/**
+ * Why the last sign-in link failed, read once at load and wiped from the address bar.
+ *
+ * A link that is expired, already used, or aimed at an origin the project does not allow comes back
+ * as `#error=...&error_code=...` carrying no session. The client reports that only through the
+ * promise returned by its own initialisation, which `getSession()` discards, so without this the
+ * page simply shows the sign-in form again and says nothing about why.
+ */
+export const signInLinkError: string | null = takeSignInLinkError()
+
+function takeSignInLinkError(): string | null {
+  if (typeof window === 'undefined') return null
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const query = new URLSearchParams(window.location.search)
+  const code = hash.get('error_code') ?? query.get('error_code')
+  const description = hash.get('error_description') ?? query.get('error_description')
+  if (!code && !description) return null
+
+  // An error callback carries no tokens, so nothing here is still wanted by the auth client.
+  // Clearing it stops a reload from reporting a link the person has already given up on.
+  for (const name of ['error', 'error_code', 'error_description']) query.delete(name)
+  const search = query.toString()
+  window.history.replaceState(
+    window.history.state,
+    '',
+    window.location.pathname + (search ? `?${search}` : ''),
+  )
+
+  if (code === 'otp_expired') {
+    return 'That sign-in link has expired or was already used. Send yourself a new one.'
+  }
+  return description?.replace(/\+/g, ' ') ?? 'That sign-in link did not work. Send yourself a new one.'
+}
 
 /** A new client-generated id. Rows are upserted by id, so the same UUID is the same record. */
 export function newId(): string {
