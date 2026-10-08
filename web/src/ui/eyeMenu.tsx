@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { CheckIcon, EyeIcon, EyeSlashIcon } from '@phosphor-icons/react'
+import {
+  CheckIcon,
+  DotsThreeIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  MinusIcon,
+} from '@phosphor-icons/react'
 import type { EyeFilter } from '@/core'
+import { useStore } from '@/data/store'
 
 /**
- * The eye. Two independent flags, and it says how many items it is currently hiding so the count
- * is never a mystery.
+ * The eye. Independent flags, and it says how many items it is currently hiding so the count is
+ * never a mystery. The group flag hides every group at once; its three dots open a list to hide
+ * groups one by one.
  */
 export function EyeMenu({
   filter,
@@ -16,11 +24,35 @@ export function EyeMenu({
   hiddenCount: number
 }) {
   const [open, setOpen] = useState(false)
+  const [groupsOpen, setGroupsOpen] = useState(false)
   const wrapper = useRef<HTMLDivElement>(null)
-  const on = filter.hideRoutine || filter.hideGroup
+  const { data } = useStore()
+  const groups = data.groups
+
+  const hiddenIds = filter.hiddenGroupIds ?? []
+  const isGroupHidden = (id: string) => filter.hideGroup || hiddenIds.includes(id)
+  const hiddenGroupCount = groups.filter((g) => isGroupHidden(g.id)).length
+  const allGroupsHidden =
+    filter.hideGroup || (groups.length > 0 && hiddenGroupCount === groups.length)
+  const someGroupsHidden = !allGroupsHidden && hiddenGroupCount > 0
+  const on = filter.hideRoutine || allGroupsHidden || someGroupsHidden
+
+  function setAllGroups(hidden: boolean) {
+    onChange({ ...filter, hideGroup: hidden, hiddenGroupIds: [] })
+  }
+
+  function toggleGroup(id: string) {
+    // Hiding all at once also covers groups joined later; unticking one spells the rest out.
+    const current = filter.hideGroup ? groups.map((g) => g.id) : hiddenIds
+    const next = current.includes(id) ? current.filter((g) => g !== id) : [...current, id]
+    onChange({ ...filter, hideGroup: false, hiddenGroupIds: next })
+  }
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setGroupsOpen(false)
+      return
+    }
     function onPointerDown(event: MouseEvent) {
       if (!wrapper.current?.contains(event.target as Node)) setOpen(false)
     }
@@ -61,7 +93,7 @@ export function EyeMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 z-30 mt-1 w-56 rounded border border-line bg-surface p-1 shadow-[0_10px_30px_-10px_rgba(20,20,30,0.35)]"
+          className="absolute right-0 z-30 mt-1 w-64 rounded border border-line bg-surface p-1 shadow-[0_10px_30px_-10px_rgba(20,20,30,0.35)]"
         >
           <MenuToggle
             checked={filter.hideRoutine}
@@ -69,12 +101,46 @@ export function EyeMenu({
             title="Hide routine"
             hint="Courses and events you marked routine"
           />
-          <MenuToggle
-            checked={filter.hideGroup}
-            onChange={(v) => onChange({ ...filter, hideGroup: v })}
-            title="Hide group items"
-            hint="Everything shared through a group"
-          />
+          <div className="flex items-start">
+            <MenuToggle
+              checked={allGroupsHidden}
+              mixed={someGroupsHidden}
+              onChange={() => setAllGroups(!allGroupsHidden)}
+              title="Hide group items"
+              hint={
+                someGroupsHidden
+                  ? `${hiddenGroupCount} of ${groups.length} groups hidden`
+                  : 'Everything shared through a group'
+              }
+            />
+            {groups.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setGroupsOpen((v) => !v)}
+                aria-expanded={groupsOpen}
+                aria-label="Choose groups to hide"
+                title="Choose groups to hide"
+                className={`mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted transition-colors duration-150 hover:bg-sunken hover:text-ink ${
+                  groupsOpen ? 'bg-sunken text-ink' : ''
+                }`}
+              >
+                <DotsThreeIcon size={16} weight="bold" />
+              </button>
+            ) : null}
+          </div>
+          {groupsOpen ? (
+            <div role="group" aria-label="Groups" className="ml-5 border-l border-line pl-1">
+              {groups.map((g) => (
+                <MenuToggle
+                  key={g.id}
+                  checked={isGroupHidden(g.id)}
+                  onChange={() => toggleGroup(g.id)}
+                  title={g.name}
+                  swatch={g.resolvedColorHex}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -83,33 +149,50 @@ export function EyeMenu({
 
 function MenuToggle({
   checked,
+  mixed = false,
   onChange,
   title,
   hint,
+  swatch,
 }: {
   checked: boolean
+  /** Some but not all of what this box covers is ticked. */
+  mixed?: boolean
   onChange: (next: boolean) => void
   title: string
-  hint: string
+  hint?: string
+  swatch?: string
 }) {
+  const filled = checked || mixed
   return (
     <button
       type="button"
       role="menuitemcheckbox"
-      aria-checked={checked}
+      aria-checked={mixed ? 'mixed' : checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-start gap-2 rounded px-2 py-1.5 text-left hover:bg-sunken"
+      className="flex min-w-0 flex-1 items-start gap-2 rounded px-2 py-1.5 text-left hover:bg-sunken"
     >
       <span
         className={`mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border ${
-          checked ? 'border-accent bg-accent' : 'border-line-strong'
+          filled ? 'border-accent bg-accent' : 'border-line-strong'
         }`}
       >
-        {checked ? <CheckIcon size={10} weight="bold" color="var(--accent-ink)" /> : null}
+        {checked ? (
+          <CheckIcon size={10} weight="bold" color="var(--accent-ink)" />
+        ) : mixed ? (
+          <MinusIcon size={10} weight="bold" color="var(--accent-ink)" />
+        ) : null}
       </span>
-      <span className="flex flex-col">
-        <span className="text-sm">{title}</span>
-        <span className="text-tiny text-faint">{hint}</span>
+      {swatch ? (
+        <span
+          aria-hidden
+          className="mt-[5px] h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: swatch }}
+        />
+      ) : null}
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate text-sm">{title}</span>
+        {hint ? <span className="text-tiny text-faint">{hint}</span> : null}
       </span>
     </button>
   )

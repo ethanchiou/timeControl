@@ -131,17 +131,24 @@ export function nextOccurrence(
   )
 }
 
-/** The two independent flags behind the eye menu. */
+/** The independent flags behind the eye menu. */
 export interface EyeFilter {
   hideRoutine: boolean
+  /** Hide every group's items, including groups joined later. */
   hideGroup: boolean
+  /** Groups hidden one by one while `hideGroup` is off. */
+  hiddenGroupIds?: readonly string[]
+}
+
+/** Whether the filter hides this occurrence's group, either all groups at once or this one. */
+export function hidesGroupOf(filter: EyeFilter, o: Occurrence): boolean {
+  if (o.group === null) return false
+  return filter.hideGroup || (filter.hiddenGroupIds?.includes(o.group.id) ?? false)
 }
 
 /** Occurrences a filter would remove. Suppressed occurrences are never shown at all. */
 export function hiddenBy(occurrences: readonly Occurrence[], filter: EyeFilter): Occurrence[] {
-  return occurrences.filter(
-    (o) => (filter.hideRoutine && o.isRoutine) || (filter.hideGroup && o.group !== null),
-  )
+  return occurrences.filter((o) => (filter.hideRoutine && o.isRoutine) || hidesGroupOf(filter, o))
 }
 
 /** What a view draws: never suppressed, and never filtered out by the eye. */
@@ -150,6 +157,6 @@ export function visible(occurrences: readonly Occurrence[], filter: EyeFilter): 
     (o) =>
       o.suppressedBy === null &&
       !(filter.hideRoutine && o.isRoutine) &&
-      !(filter.hideGroup && o.group !== null),
+      !hidesGroupOf(filter, o),
   )
 }

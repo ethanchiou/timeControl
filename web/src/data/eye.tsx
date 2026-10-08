@@ -4,7 +4,7 @@ import type { EyeFilter } from '@/core'
 export type Scale = 'day' | 'week' | 'month'
 
 /**
- * The eye's two flags, remembered per scale.
+ * The eye's flags, remembered per scale.
  *
  * A month is mostly the timetable repeating, so it opens with both hidden and shows only the
  * one-time things. A day and a week have the room for everything, so they open unfiltered.

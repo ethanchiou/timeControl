@@ -242,6 +242,26 @@ describe('routine, colour and group flags', () => {
     expect(hiddenBy(all, { hideRoutine: true, hideGroup: true })).toHaveLength(2)
   })
 
+  it('hides chosen groups one by one, and every group when the master flag is on', () => {
+    const study = { id: 'g1', name: 'Study group', colorHex: '#10B981' }
+    const club = { id: 'g2', name: 'Climbing club', colorHex: '#3B82F6' }
+    const problems = event('Problem set', 'course', instant(day, 600), instant(day, 660), {
+      group: study,
+    })
+    const climb = event('Bouldering', 'personal', instant(day, 900), instant(day, 960), {
+      group: club,
+    })
+    const interview = event('Interview', 'interview', instant(day, 1000), instant(day, 1040))
+    const all = occurrencesOn(day, { events: [problems, climb, interview] })
+
+    const one = { hideRoutine: false, hideGroup: false, hiddenGroupIds: ['g1'] }
+    expect(visible(all, one).map((o) => o.title)).toEqual(['Bouldering', 'Interview'])
+    expect(hiddenBy(all, one).map((o) => o.title)).toEqual(['Problem set'])
+
+    const master = { hideRoutine: false, hideGroup: true, hiddenGroupIds: [] }
+    expect(visible(all, master).map((o) => o.title)).toEqual(['Interview'])
+  })
+
   it('never shows a suppressed occurrence, whatever the filter', () => {
     const cs = course('CS201', { weekdays: [MON] })
     const b: BlackoutSpec = { id: 'b5', start: day, end: day, kinds: [], reason: '' }
